@@ -1,0 +1,504 @@
+// BoxKart Box Engine
+// PostgreSQL + Prisma
+// This is the schema implementation contract.
+// Keep application logic in JavaScript services.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
+}
+enum ProductType {
+  CORRUGATED_BOX
+  MAILER_BOX
+  PAPER_MAILER
+  BUBBLE_MAILER
+  TAPE
+  STRETCH_FILM
+  VOID_FILL
+  INSERT
+  OTHER
+}
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  DISCONTINUED
+}
+enum DimensionUnit {
+  MM
+  CM
+  INCH
+}
+enum WeightUnit {
+  GRAM
+  KG
+  LB
+}
+enum InventoryStatus {
+  AVAILABLE
+  OUT_OF_STOCK
+  DISCONTINUED
+}
+enum CartStatus {
+  ACTIVE
+  CONVERTED
+  ABANDONED
+}
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  FAILED
+  REFUNDED
+}
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+enum PaymentMethod {
+  COD
+  CARD
+  UPI
+  NET_BANKING
+  WALLET
+  OTHER
+}
+enum RFQStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  QUOTED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+  CONVERTED_TO_ORDER
+}
+enum QuoteStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+enum AttachmentType {
+  IMAGE
+  PDF
+  CSV
+  XLSX
+  OTHER
+}
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique
+  passwordHash String
+  firstName String?
+  lastName String?
+  phone String?
+  role UserRole @default(CUSTOMER)
+  status UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  lastLoginAt DateTime?
+  addresses Address[]
+  cart Cart?
+  orders Order[]
+  rfqs RFQ[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status])
+  @@index([role])
+  @@map("users")
+}
+
+model Address {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  label String?
+  fullName String
+  phone String
+  addressLine1 String
+  addressLine2 String?
+  landmark String?
+  city String
+  state String
+  postalCode String
+  country String @default("IN")
+  isDefault Boolean @default(false)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId])
+  @@index([postalCode])
+  @@map("addresses")
+}
+
+model Category {
+  id String @id @default(uuid()) @db.Uuid
+  name String
+  slug String @unique
+  description String?
+  imageUrl String?
+  status CategoryStatus @default(ACTIVE)
+  sortOrder Int @default(0)
+  products Product[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status])
+  @@index([sortOrder])
+  @@map("categories")
+}
+
+model Product {
+  id String @id @default(uuid()) @db.Uuid
+  sku String @unique
+  name String
+  slug String @unique
+  shortDescription String?
+  description String?
+  categoryId String @db.Uuid
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  productType ProductType
+  status ProductStatus @default(DRAFT)
+  unit String @default("piece")
+  moq Int @default(100)
+  weight Decimal? @db.Decimal(10, 3)
+  weightUnit WeightUnit @default(GRAM)
+  boxSpecification BoxSpecification?
+  images ProductImage[]
+  priceTiers ProductPriceTier[]
+  inventory Inventory?
+  cartItems CartItem[]
+  orderItems OrderItem[]
+  rfqItems RFQItem[]
+  quoteItems QuoteItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([categoryId])
+  @@index([status])
+  @@index([productType])
+  @@index([categoryId, status])
+  @@map("products")
+}
+
+model BoxSpecification {
+  id String @id @default(uuid()) @db.Uuid
+  productId String @unique @db.Uuid
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  internalLength Decimal @db.Decimal(10, 2)
+  internalWidth Decimal @db.Decimal(10, 2)
+  internalHeight Decimal @db.Decimal(10, 2)
+  externalLength Decimal? @db.Decimal(10, 2)
+  externalWidth Decimal? @db.Decimal(10, 2)
+  externalHeight Decimal? @db.Decimal(10, 2)
+  dimensionUnit DimensionUnit @default(INCH)
+  material String?
+  ply Int?
+  flute String?
+  gsm Int?
+  maxRecommendedWeight Decimal? @db.Decimal(10, 3)
+  weightUnit WeightUnit @default(KG)
+  boxStyle String?
+  closureType String?
+  printingSupported Boolean @default(false)
+  customizationSupported Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([material])
+  @@index([ply])
+  @@index([boxStyle])
+  @@map("box_specifications")
+}
+
+model ProductImage {
+  id String @id @default(uuid()) @db.Uuid
+  productId String @db.Uuid
+  url String
+  altText String?
+  sortOrder Int @default(0)
+  isPrimary Boolean @default(false)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([productId])
+  @@index([productId, sortOrder])
+  @@map("product_images")
+}
+
+model ProductPriceTier {
+  id String @id @default(uuid()) @db.Uuid
+  productId String @db.Uuid
+  minimumQuantity Int
+  maximumQuantity Int?
+  unitPriceMinor Int
+  currency String @default("INR")
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([productId])
+  @@index([productId, minimumQuantity])
+  @@map("product_price_tiers")
+}
+
+model Inventory {
+  id String @id @default(uuid()) @db.Uuid
+  productId String @unique @db.Uuid
+  availableQuantity Int @default(0)
+  reservedQuantity Int @default(0)
+  status InventoryStatus @default(OUT_OF_STOCK)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status])
+  @@map("inventory")
+}
+
+model Cart {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  status CartStatus @default(ACTIVE)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status])
+  @@map("carts")
+}
+
+model CartItem {
+  id String @id @default(uuid()) @db.Uuid
+  cartId String @db.Uuid
+  productId String @db.Uuid
+  quantity Int
+  cart Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([cartId, productId])
+  @@index([productId])
+  @@map("cart_items")
+}
+
+model Order {
+  id String @id @default(uuid()) @db.Uuid
+  orderNumber String @unique
+  userId String @db.Uuid
+  status OrderStatus @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  currency String @default("INR")
+  subtotalMinor Int @default(0)
+  discountMinor Int @default(0)
+  shippingMinor Int @default(0)
+  taxMinor Int @default(0)
+  totalMinor Int @default(0)
+  shippingAddressSnapshot Json
+  billingAddressSnapshot Json
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items OrderItem[]
+  payments Payment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id String @id @default(uuid()) @db.Uuid
+  orderId String @db.Uuid
+  productId String @db.Uuid
+  skuSnapshot String
+  nameSnapshot String
+  quantity Int
+  unitPriceMinor Int
+  discountMinor Int @default(0)
+  taxMinor Int @default(0)
+  totalMinor Int
+  productSnapshot Json
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model Payment {
+  id String @id @default(uuid()) @db.Uuid
+  orderId String @db.Uuid
+  provider String
+  providerPaymentId String?
+  amountMinor Int
+  currency String @default("INR")
+  status PaymentStatus @default(PENDING)
+  method PaymentMethod
+  paidAt DateTime?
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([orderId])
+  @@index([status])
+  @@index([providerPaymentId])
+  @@map("payments")
+}
+
+model RFQ {
+  id String @id @default(uuid()) @db.Uuid
+  rfqNumber String @unique
+  userId String @db.Uuid
+  status RFQStatus @default(DRAFT)
+  packagingType String?
+  requiredQuantity Int?
+  deliveryPostalCode String?
+  deliveryCity String?
+  deliveryState String?
+  requiredDeliveryDate DateTime?
+  notes String?
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items RFQItem[]
+  attachments RFQAttachment[]
+  quotes Quote[]
+  customPackaging CustomPackagingRequest?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("rfqs")
+}
+
+model RFQItem {
+  id String @id @default(uuid()) @db.Uuid
+  rfqId String @db.Uuid
+  productId String? @db.Uuid
+  description String?
+  length Decimal? @db.Decimal(10, 2)
+  width Decimal? @db.Decimal(10, 2)
+  height Decimal? @db.Decimal(10, 2)
+  dimensionUnit DimensionUnit?
+  quantity Int
+  material String?
+  ply Int?
+  flute String?
+  printing String?
+  finishing String?
+  notes String?
+  rfq RFQ @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([rfqId])
+  @@index([productId])
+  @@map("rfq_items")
+}
+
+model RFQAttachment {
+  id String @id @default(uuid()) @db.Uuid
+  rfqId String @db.Uuid
+  fileName String
+  fileUrl String
+  fileType AttachmentType
+  fileSize Int
+  rfq RFQ @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@index([rfqId])
+  @@map("rfq_attachments")
+}
+
+model Quote {
+  id String @id @default(uuid()) @db.Uuid
+  quoteNumber String @unique
+  rfqId String @db.Uuid
+  status QuoteStatus @default(DRAFT)
+  validUntil DateTime?
+  subtotalMinor Int @default(0)
+  discountMinor Int @default(0)
+  shippingMinor Int @default(0)
+  taxMinor Int @default(0)
+  totalMinor Int @default(0)
+  currency String @default("INR")
+  notes String?
+  rfq RFQ @relation(fields: [rfqId], references: [id], onDelete: Restrict)
+  items QuoteItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([rfqId])
+  @@index([status])
+  @@index([validUntil])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id String @id @default(uuid()) @db.Uuid
+  quoteId String @db.Uuid
+  productId String? @db.Uuid
+  description String?
+  quantity Int
+  unitPriceMinor Int
+  setupChargeMinor Int @default(0)
+  printingChargeMinor Int @default(0)
+  discountMinor Int @default(0)
+  taxMinor Int @default(0)
+  totalMinor Int
+  productSnapshot Json?
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  product Product? @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([quoteId])
+  @@index([productId])
+  @@map("quote_items")
+}
+
+model CustomPackagingRequest {
+  id String @id @default(uuid()) @db.Uuid
+  rfqId String @unique @db.Uuid
+  packagingType String
+  length Decimal? @db.Decimal(10, 2)
+  width Decimal? @db.Decimal(10, 2)
+  height Decimal? @db.Decimal(10, 2)
+  dimensionUnit DimensionUnit?
+  material String?
+  ply Int?
+  flute String?
+  printing String?
+  finishing String?
+  quantity Int?
+  artworkRequired Boolean @default(false)
+  notes String?
+  rfq RFQ @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("custom_packaging_requests")
+}
