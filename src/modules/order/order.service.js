@@ -59,17 +59,26 @@ const createOrder = async (userId, shippingAddressId, billingAddressId, idempote
         throw new AppError(`Minimum order quantity not met for ${product.sku}`, { code: 'BELOW_MOQ', statusCode: 400 });
       }
 
-      if (!product.inventory || product.inventory.availableQuantity < item.quantity) {
+      if (!product.inventory) {
         throw new AppError(`Insufficient stock for ${product.sku}`, { code: 'INSUFFICIENT_INVENTORY', statusCode: 409 });
       }
 
-      await tx.inventory.update({
-        where: { productId: product.id },
+      const updateResult = await tx.inventory.updateMany({
+        where: {
+          productId: product.id,
+          availableQuantity: {
+            gte: item.quantity
+          }
+        },
         data: {
           availableQuantity: { decrement: item.quantity },
           reservedQuantity: { increment: item.quantity }
         }
       });
+
+      if (updateResult.count !== 1) {
+        throw new AppError(`Insufficient stock for ${product.sku}`, { code: 'INSUFFICIENT_INVENTORY', statusCode: 409 });
+      }
 
       const unitPriceMinor = matchingTier.unitPriceMinor;
       const itemSubtotalMinor = calculateSubtotal(unitPriceMinor, item.quantity);
@@ -89,36 +98,44 @@ const createOrder = async (userId, shippingAddressId, billingAddressId, idempote
 
     const orderNumber = `ORD-${Date.now()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
 
-    const order = await tx.order.create({
-      data: {
-        orderNumber,
-        idempotencyKey,
-        userId,
-        status: 'PENDING',
-        paymentStatus: 'PENDING',
-        subtotalMinor: subtotalMinor,
-        totalMinor: subtotalMinor, // Simplification for MVP
-        currency: 'INR',
-        shippingAddressSnapshot: shippingAddress,
-        billingAddressSnapshot: billingAddress,
-        items: {
-          create: orderItemsData
-        },
-        payments: {
-          create: {
-            provider: 'MANUAL',
-            status: 'PENDING',
-            amountMinor: subtotalMinor,
-            method: 'COD',
-            currency: 'INR'
+    let order;
+    try {
+      order = await tx.order.create({
+        data: {
+          orderNumber,
+          idempotencyKey,
+          userId,
+          status: 'PENDING',
+          paymentStatus: 'PENDING',
+          subtotalMinor: subtotalMinor,
+          totalMinor: subtotalMinor, // Simplification for MVP
+          currency: 'INR',
+          shippingAddressSnapshot: shippingAddress,
+          billingAddressSnapshot: billingAddress,
+          items: {
+            create: orderItemsData
+          },
+          payments: {
+            create: {
+              provider: 'MANUAL',
+              status: 'PENDING',
+              amountMinor: subtotalMinor,
+              method: 'COD',
+              currency: 'INR'
+            }
           }
+        },
+        include: {
+          items: true,
+          payments: true
         }
-      },
-      include: {
-        items: true,
-        payments: true
+      });
+    } catch (error) {
+      if (error.code === 'P2002' && error.meta?.target?.includes('idempotencyKey')) {
+        throw new AppError('Idempotency key already in use', { code: 'IDEMPOTENCY_CONFLICT', statusCode: 409 });
       }
-    });
+      throw error;
+    }
 
     await tx.cartItem.deleteMany({
       where: { cartId: cart.id }

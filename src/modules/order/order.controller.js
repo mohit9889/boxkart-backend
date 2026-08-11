@@ -7,6 +7,13 @@ const createOrder = async (req, res, next) => {
     const { shippingAddressId, billingAddressId } = createOrderSchema.parse(req.body);
     const idempotencyKey = req.headers['idempotency-key'];
 
+    if (!idempotencyKey || typeof idempotencyKey !== 'string' || idempotencyKey.length < 16 || idempotencyKey.length > 128) {
+      return next(new AppError('Idempotency-Key header is required and must be between 16 and 128 characters', {
+        code: 'IDEMPOTENCY_KEY_REQUIRED',
+        statusCode: 400
+      }));
+    }
+
     const order = await orderService.createOrder(
       req.user.id,
       shippingAddressId,

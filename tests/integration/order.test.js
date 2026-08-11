@@ -88,11 +88,30 @@ describe('Order API', () => {
     const res = await request(app)
       .post('/api/v1/orders')
       .set('Cookie', [`token=${token}`])
+      .set('Idempotency-Key', `ik-${Date.now()}-${Math.random()}`)
       .send({ shippingAddressId: global.testAddressId });
 
     expect(res.statusCode).toBe(400);
     expect(res.body.success).toBe(false);
     expect(res.body.error.message).toBe('Cart is empty');
+  });
+
+  it('should return 400 when Idempotency-Key header is missing', async () => {
+    // Add to cart to bypass cart empty check
+    await request(app)
+      .post('/api/v1/cart/items')
+      .set('Cookie', [`token=${token}`])
+      .send({ productId: validProductId, quantity: 50 });
+
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set('Cookie', [`token=${token}`])
+      // Intentionally missing Idempotency-Key
+      .send({ shippingAddressId: global.testAddressId });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('IDEMPOTENCY_KEY_REQUIRED');
   });
 
   it('should create an order successfully and empty the cart', async () => {
@@ -107,6 +126,7 @@ describe('Order API', () => {
     const res = await request(app)
       .post('/api/v1/orders')
       .set('Cookie', [`token=${token}`])
+      .set('Idempotency-Key', `ik-${Date.now()}-${Math.random()}`)
       .send({ shippingAddressId: global.testAddressId });
 
     expect(res.statusCode).toBe(201);
@@ -248,6 +268,7 @@ describe('Order API', () => {
     const res = await request(app)
       .post('/api/v1/orders')
       .set('Cookie', [`token=${token}`])
+      .set('Idempotency-Key', `ik-${Date.now()}-${Math.random()}`)
       .send({ shippingAddressId: global.testAddressId });
 
     expect(res.statusCode).toBe(400);
@@ -270,6 +291,7 @@ describe('Order API', () => {
     const res = await request(app)
       .post('/api/v1/orders')
       .set('Cookie', [`token=${token}`])
+      .set('Idempotency-Key', `ik-${Date.now()}-${Math.random()}`)
       .send({ shippingAddressId: global.testAddressId });
 
     expect(res.statusCode).toBe(409);
@@ -305,6 +327,7 @@ describe('Order API', () => {
     const res = await request(app)
       .post('/api/v1/orders')
       .set('Cookie', [`token=${token}`])
+      .set('Idempotency-Key', `ik-${Date.now()}-${Math.random()}`)
       .send({ shippingAddressId: adminAddress.id });
 
     expect(res.statusCode).toBe(400);
