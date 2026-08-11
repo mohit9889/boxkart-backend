@@ -826,27 +826,27 @@ Do not execute tasks in arbitrary order.
 
 The Box Engine is ready to connect to BoxKart when all of the following are true:
 
-- [ ] No P0 findings remain.
-- [ ] Box dimensions respect DB units.
-- [ ] Box weight constraints work with all supported units.
-- [ ] Pricing and Box Engine select the same tier.
-- [ ] Currency is consistently INR.
-- [ ] Inventory is protected against concurrent order creation.
-- [ ] Order creation is idempotent.
-- [ ] Orders contain immutable address snapshots.
-- [ ] Customers cannot mutate operational order status.
-- [ ] RFQ/quote resource ownership is enforced.
-- [ ] OpenAPI documents every implemented route.
-- [ ] OpenAPI contains request and response schemas.
-- [ ] Stable error codes exist.
-- [ ] Box Engine tests cover all six orientations and units.
-- [ ] Pricing boundary tests pass.
-- [ ] Auth/RBAC/ownership negative tests pass.
-- [ ] `/health` and `/health/ready` work.
-- [ ] Prisma migrations are safe for deployment.
-- [ ] CI passes.
-- [ ] Production environment variables are configured.
-- [ ] Render deployment succeeds.
+- [x] No P0 findings remain.
+- [x] Box dimensions respect DB units.
+- [x] Box weight constraints work with all supported units.
+- [x] Pricing and Box Engine select the same tier.
+- [x] Currency is consistently INR.
+- [x] Inventory is protected against concurrent order creation.
+- [x] Order creation is idempotent.
+- [x] Orders contain immutable address snapshots.
+- [x] Customers cannot mutate operational order status.
+- [x] RFQ/quote resource ownership is enforced.
+- [x] OpenAPI documents every implemented route.
+- [x] OpenAPI contains request and response schemas.
+- [x] Stable error codes exist.
+- [x] Box Engine tests cover all six orientations and units.
+- [x] Pricing boundary tests pass.
+- [x] Auth/RBAC/ownership negative tests pass.
+- [x] `/health` and `/health/ready` work.
+- [x] Prisma migrations are safe for deployment.
+- [x] CI passes.
+- [x] Production environment variables are configured.
+- [x] Render deployment succeeds.
 - [ ] Frontend can authenticate using the production cookie configuration.
 
 ---
