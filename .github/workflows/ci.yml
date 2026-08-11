@@ -43,6 +43,11 @@ jobs:
       run: npx prisma migrate deploy
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/box_engine_test?schema=public
+        
+    - name: Seed Database
+      run: npm run seed
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/box_engine_test?schema=public
       
     - name: Validate OpenAPI spec
       run: npm run openapi:validate
