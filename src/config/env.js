@@ -6,7 +6,10 @@ const envSchema = z.object({
   PORT: z.string().default('3005'),
   DATABASE_URL: z.string(),
   JWT_SECRET: z.string(),
-  FRONTEND_URL: z.string().url().optional()
+  FRONTEND_URL: z.string().url().optional(),
+  DEV_FRONTEND_URL: z.string().url().optional(),
+  SUPABASE_URL: z.string().url(),
+  SUPABASE_SERVICE_KEY: z.string()
 });
 
 const _env = envSchema.safeParse(process.env);

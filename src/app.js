@@ -25,8 +25,8 @@ app.use((req, res, next) => {
 
 // CORS Configuration
 const allowedOrigins = [
-  `http://localhost:${env.PORT}`, // Backend & Swagger UI
-  process.env.FRONTEND_URL
+  env.FRONTEND_URL,
+  env.DEV_FRONTEND_URL
 ].filter(Boolean);
 
 app.use(
