@@ -22,6 +22,8 @@ Swagger UI:
 
 ## API contract
 
+**Scope Rule:** The standard API contract applies *only* to business routes under `/api/v1/*`. Infrastructure routes (like `/health` and `/health/ready`) use their own simplified schemas and do not wrap their responses in this envelope.
+
 ### Success
 
 ```json
@@ -70,7 +72,7 @@ Basic liveness check.
 
 Readiness check including database connectivity.
 
-These infrastructure endpoints intentionally use a simple health response rather than the business API envelope.
+These infrastructure endpoints are explicitly excluded from the standard API envelope (`{ success, data }`) and intentionally use a simple health response to maximize reliability for load balancers and deployment orchestration.
 
 ## Authentication
 
