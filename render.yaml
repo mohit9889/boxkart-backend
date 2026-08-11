@@ -2,7 +2,7 @@ services:
   - type: web
     name: box-engine
     env: node
-    plan: starter
+    plan: free
     buildCommand: npm ci && npx prisma generate
     preDeployCommand: npm run migrate:deploy
     startCommand: npm run start:prod
