@@ -2,7 +2,7 @@ const { z } = require('zod');
 require('dotenv').config();
 
 const envSchema = z.object({
-  PORT: z.string().default('3000'),
+  PORT: z.string().default('3005'),
   DATABASE_URL: z.string(),
   JWT_SECRET: z.string()
 });

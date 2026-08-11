@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: box-engine
+    env: node
+    plan: starter
+    buildCommand: npm ci && npx prisma generate
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: DATABASE_URL
+        sync: false # Set this securely in the Render Dashboard
+      - key: JWT_SECRET
+        generateValue: true # Render will auto-generate a secure 256-bit string
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

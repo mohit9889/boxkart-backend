@@ -1,0 +1,419 @@
+openapi: 3.1.0
+info:
+  title: BoxKart Box Engine API
+  version: 1.0.0
+  description: API documentation for BoxKart Box Engine
+servers:
+  - url: /api/v1
+    description: Box Engine API
+paths:
+  /auth/signup:
+    post:
+      summary: Register a new user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+      responses:
+        '201':
+          description: User created successfully
+        '400':
+          description: Validation error or email already in use
+  /auth/login:
+    post:
+      summary: Login user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly cookie containing the auth token
+        '401':
+          description: Invalid credentials
+  /auth/logout:
+    post:
+      summary: Logout user
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: Logged out successfully
+  /auth/me:
+    get:
+      summary: Get current user profile
+      tags:
+        - Authentication
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: User profile
+        '401':
+          description: Unauthorized
+  /categories:
+    get:
+      summary: List all active categories
+      tags:
+        - Catalog
+      responses:
+        '200':
+          description: A list of categories
+  /categories/{slug}:
+    get:
+      summary: Get category by slug
+      tags:
+        - Catalog
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Category details
+        '404':
+          description: Category not found
+  /products:
+    get:
+      summary: List products with pagination and filters
+      tags:
+        - Catalog
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of products
+  /products/{slug}:
+    get:
+      summary: Get product details by slug
+      tags:
+        - Catalog
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product details
+        '404':
+          description: Product not found
+  /box-finder/recommend:
+    post:
+      summary: Recommend boxes for a product
+      tags:
+        - Box Engine
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product
+              properties:
+                product:
+                  type: object
+                  required:
+                    - length
+                    - width
+                    - height
+                    - unit
+                  properties:
+                    length:
+                      type: number
+                    width:
+                      type: number
+                    height:
+                      type: number
+                    unit:
+                      type: string
+                      enum: [INCH, CM, MM]
+                    weight:
+                      type: number
+                    weightUnit:
+                      type: string
+                      enum: [KG, GRAM, LB, OZ]
+                requirements:
+                  type: object
+                  properties:
+                    quantity:
+                      type: integer
+                      default: 1
+                preferences:
+                  type: object
+                  properties:
+                    priority:
+                      type: string
+                      enum: [LOWEST_PRICE, BEST_FIT, BEST_PROTECTION, BALANCED]
+      responses:
+        '200':
+          description: A ranked list of recommended boxes
+  /pricing/calculate:
+    post:
+      summary: Calculate exact price for a product
+      tags:
+        - Pricing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+                - quantity
+              properties:
+                productId:
+                  type: string
+                quantity:
+                  type: integer
+      responses:
+        '200':
+          description: Price calculation successful
+        '400':
+          description: Validation error or below MOQ
+  /cart:
+    get:
+      summary: Get the current user's cart
+      tags:
+        - Cart
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Cart retrieved
+    delete:
+      summary: Clear the cart
+      tags:
+        - Cart
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Cart cleared
+  /cart/items:
+    post:
+      summary: Add an item to the cart
+      tags:
+        - Cart
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+                - quantity
+              properties:
+                productId:
+                  type: string
+                quantity:
+                  type: integer
+      responses:
+        '200':
+          description: Item added
+  /cart/items/{itemId}:
+    patch:
+      summary: Update item quantity
+      tags:
+        - Cart
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quantity
+              properties:
+                quantity:
+                  type: integer
+      responses:
+        '200':
+          description: Quantity updated
+    delete:
+      summary: Remove an item from the cart
+      tags:
+        - Cart
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Item removed
+  /checkout/preview:
+    post:
+      summary: Preview checkout calculation statelessly
+      tags:
+        - Checkout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      productId:
+                        type: string
+                      quantity:
+                        type: integer
+      responses:
+        '200':
+          description: Checkout preview details
+  /orders:
+    post:
+      summary: Place a new order from cart
+      tags:
+        - Orders
+      security:
+        - cookieAuth: []
+      responses:
+        '201':
+          description: Order created and cart emptied
+        '400':
+          description: Cart is empty or below MOQ
+    get:
+      summary: List all user orders
+      tags:
+        - Orders
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: List of orders retrieved
+  /orders/{orderId}:
+    get:
+      summary: Get details of a specific order
+      tags:
+        - Orders
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order details retrieved
+        '404':
+          description: Order not found
+  /orders/{orderId}/status:
+    patch:
+      summary: Update order status
+      tags:
+        - Orders
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [PENDING, CONFIRMED, PROCESSING, READY_TO_SHIP, SHIPPED, DELIVERED, CANCELLED, FAILED]
+      responses:
+        '200':
+          description: Order status updated
+        '400':
+          description: Illegal state transition
+        '404':
+          description: Order not found
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
