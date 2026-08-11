@@ -264,53 +264,79 @@ const acceptQuote = async (userId, rfqId, quoteId, shippingAddressId, billingAdd
       throw new AppError('Quote state changed unexpectedly', { code: 'CONCURRENCY_ERROR', statusCode: 409 });
     }
 
-    await tx.rFQ.update({
-      where: { id: rfqId },
+    const rfqUpdateResult = await tx.rFQ.updateMany({
+      where: { id: rfqId, status: RFQ_STATES.QUOTED },
       data: { status: RFQ_STATES.ACCEPTED }
     });
+    
+    if (rfqUpdateResult.count === 0) {
+      throw new AppError('RFQ is not in a quotable state', { code: 'CONCURRENCY_ERROR', statusCode: 409 });
+    }
 
     // Automatically convert to order
     const orderNumber = `ORD-${Date.now()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
 
-    let productId = rfq.items[0]?.productId;
-    if (!productId) {
-      const category = await tx.category.findFirst();
-      const product = await tx.product.create({
-        data: {
-          sku: `CUS-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
-          name: `Custom Packaging ${rfq.rfqNumber}`,
-          slug: `custom-${rfq.rfqNumber.toLowerCase()}-${crypto.randomBytes(2).toString('hex')}`,
-          description: 'Custom packaging generated from RFQ',
-          status: 'ACTIVE',
-          productType: 'CORRUGATED_BOX',
-          categoryId: category.id
-        }
-      });
-      productId = product.id;
+    const orderItemsData = [];
+    let remainingSubtotal = quote.subtotalMinor;
 
-      await tx.inventory.create({
-        data: {
-          productId: productId,
-          availableQuantity: rfq.requiredQuantity || 1,
-          reservedQuantity: 0
-        }
-      });
-    }
+    for (let i = 0; i < rfq.items.length; i++) {
+      const item = rfq.items[i];
+      let productId = item.productId;
+      
+      if (!productId) {
+        const category = await tx.category.findFirst();
+        const product = await tx.product.create({
+          data: {
+            sku: `CUS-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
+            name: `Custom Packaging ${rfq.rfqNumber} Item ${i+1}`,
+            slug: `custom-${rfq.rfqNumber.toLowerCase()}-${crypto.randomBytes(2).toString('hex')}-${i}`,
+            description: 'Custom packaging generated from RFQ',
+            status: 'ACTIVE',
+            isCustom: true,
+            productType: 'CORRUGATED_BOX',
+            categoryId: category.id
+          }
+        });
+        productId = product.id;
 
-    const requiredQty = rfq.requiredQuantity || 1;
-    const inventoryUpdateResult = await tx.inventory.updateMany({
-      where: {
-        productId: productId,
-        availableQuantity: { gte: requiredQty }
-      },
-      data: {
-        availableQuantity: { decrement: requiredQty },
-        reservedQuantity: { increment: requiredQty }
+        await tx.inventory.create({
+          data: {
+            productId: productId,
+            availableQuantity: item.quantity || rfq.requiredQuantity || 1,
+            reservedQuantity: 0
+          }
+        });
       }
-    });
 
-    if (inventoryUpdateResult.count !== 1) {
-      throw new AppError(`Insufficient stock for product`, { code: 'INSUFFICIENT_INVENTORY', statusCode: 409 });
+      const itemQty = item.quantity || rfq.requiredQuantity || 1;
+      
+      const inventoryUpdateResult = await tx.inventory.updateMany({
+        where: {
+          productId: productId,
+          availableQuantity: { gte: itemQty }
+        },
+        data: {
+          availableQuantity: { decrement: itemQty },
+          reservedQuantity: { increment: itemQty }
+        }
+      });
+
+      if (inventoryUpdateResult.count !== 1) {
+        throw new AppError(`Insufficient stock for product`, { code: 'INSUFFICIENT_INVENTORY', statusCode: 409 });
+      }
+
+      const itemTotalMinor = i === rfq.items.length - 1 ? remainingSubtotal : Math.floor(quote.subtotalMinor / rfq.items.length);
+      remainingSubtotal -= itemTotalMinor;
+
+      orderItemsData.push({
+        productId: productId,
+        skuSnapshot: 'RFQ-CUSTOM',
+        nameSnapshot: `Custom RFQ Packaging Item ${i+1}`,
+        quantity: itemQty,
+        unitPriceMinor: Math.floor(itemTotalMinor / itemQty),
+        totalMinor: itemTotalMinor,
+        productSnapshot: { rfqId: rfq.id, itemId: item.id }
+      });
     }
 
     let order;
@@ -331,19 +357,7 @@ const acceptQuote = async (userId, rfqId, quoteId, shippingAddressId, billingAdd
           shippingAddressSnapshot: shippingAddress,
           billingAddressSnapshot: billingAddress,
           items: {
-            create: [
-              {
-                productId: productId,
-                skuSnapshot: 'RFQ-CUSTOM',
-                nameSnapshot: 'Custom RFQ Packaging',
-                quantity: requiredQty,
-                unitPriceMinor: Math.floor(
-                  quote.subtotalMinor / requiredQty
-                ),
-                totalMinor: quote.subtotalMinor,
-                productSnapshot: { rfqId: rfq.id }
-              }
-            ]
+            create: orderItemsData
           },
           payments: {
             create: {
@@ -384,7 +398,15 @@ const cancelRfq = async (userId, rfqId, userRole = 'CUSTOMER') => {
   });
 
   if (cancelledRfq.attachments && cancelledRfq.attachments.length > 0) {
-    const filePaths = cancelledRfq.attachments.map(att => att.fileUrl);
+    const filePaths = cancelledRfq.attachments.map(att => {
+      // If it accidentally contains a full URL, strip it to get the raw path
+      try {
+        const urlObj = new URL(att.fileUrl);
+        return urlObj.pathname.split('/').slice(-2).join('/'); // extracts "rfqId/filename"
+      } catch (e) {
+        return att.fileUrl; // Already a raw path
+      }
+    });
     try {
       await supabase.storage.from('rfq-attachments').remove(filePaths);
     } catch (error) {

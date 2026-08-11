@@ -3,6 +3,7 @@ const router = express.Router();
 const rfqController = require('./rfq.controller');
 const { requireAuth, requireAdmin } = require('../../middleware/auth');
 const multer = require('multer');
+const AppError = require('../../utils/AppError');
 
 const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
@@ -10,7 +11,7 @@ const upload = multer({
     if (['image/jpeg', 'image/png', 'application/pdf'].includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG, and PDF are allowed.'), false);
+      cb(new AppError('Invalid file type. Only JPEG, PNG, and PDF are allowed.', { code: 'UNSUPPORTED_MEDIA_TYPE', statusCode: 415 }), false);
     }
   }
 });
