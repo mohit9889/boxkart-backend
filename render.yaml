@@ -3,8 +3,7 @@ services:
     name: box-engine
     env: node
     plan: free
-    buildCommand: npm ci && npx prisma generate
-    preDeployCommand: npm run migrate:deploy
+    buildCommand: npm ci && npx prisma generate && npm run migrate:deploy
     startCommand: npm run start:prod
     healthCheckPath: /health/ready
     envVars:
