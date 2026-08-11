@@ -9,7 +9,7 @@
     "migrate:deploy": "npx prisma migrate deploy",
     "dev": "nodemon src/server.js",
     "test": "jest --runInBand",
-    "seed": "node src/infrastructure/database/seed.js",
+    "seed": "node prisma/seed.js",
     "format": "prettier --write \"src/**/*.js\"",
     "openapi:validate": "swagger-cli validate src/api-spec/openapi.yaml"
   },
