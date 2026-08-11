@@ -3,6 +3,7 @@ const { signupSchema, loginSchema } = require('./auth.validation');
 const { hashPassword, comparePassword } = require('./password.service');
 const { generateToken } = require('./token.service');
 const AppError = require('../../utils/AppError');
+const { generateCsrfToken } = require('../../middleware/csrf');
 
 const cookieOptions = {
   httpOnly: true,
@@ -132,9 +133,23 @@ const me = (req, res) => {
   res.status(200).json({ success: true, data: userWithoutPassword });
 };
 
+const getCsrfToken = (req, res) => {
+  const token = generateCsrfToken();
+  
+  res.cookie('csrf_token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  });
+
+  res.status(200).json({ success: true, data: { csrfToken: token } });
+};
+
 module.exports = {
   signup,
   login,
   logout,
-  me
+  me,
+  getCsrfToken
 };

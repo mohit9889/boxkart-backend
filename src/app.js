@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const logger = require('./infrastructure/logging/logger');
 const AppError = require('./utils/AppError');
+const { csrfProtection } = require('./middleware/csrf');
 const routes = require('./routes');
 const { env } = require('./config/env');
 
@@ -83,6 +84,9 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+
+// Apply CSRF Protection to all mutating routes
+app.use(csrfProtection);
 
 // Routes
 app.use('/', routes);

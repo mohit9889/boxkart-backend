@@ -7,6 +7,30 @@ servers:
   - url: /api/v1
     description: Box Engine API
 paths:
+  /auth/csrf-token:
+    get:
+      tags:
+        - Authentication
+      summary: Get CSRF token
+      description: Returns a CSRF token to be included in the X-CSRF-Token header of state-mutating requests. Also sets an HttpOnly cookie with the token.
+      responses:
+        '200':
+          description: CSRF token successfully generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      csrfToken:
+                        type: string
+                        example: "a1b2c3d4e5f6..."
+
   /auth/signup:
     post:
       summary: Register a new user

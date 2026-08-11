@@ -18,6 +18,7 @@ const authLimiter = rateLimit({
   skip: () => process.env.NODE_ENV === 'test'
 });
 
+router.get('/csrf-token', authController.getCsrfToken);
 router.post('/signup', authLimiter, authController.signup);
 router.post('/login', authLimiter, authController.login);
 router.post('/logout', authController.logout);
