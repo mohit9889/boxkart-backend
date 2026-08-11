@@ -4,14 +4,9 @@ const {
   validateQuoteTransition,
   RFQ_STATES
 } = require('./rfq.domain');
-const { createClient } = require('@supabase/supabase-js');
+const supabase = require('../../infrastructure/storage/supabaseClient');
 const crypto = require('crypto');
 const AppError = require('../../utils/AppError');
-
-const supabase = createClient(
-  process.env.SUPABASE_URL || 'https://mock.supabase.co',
-  process.env.SUPABASE_SERVICE_KEY || 'mock-key'
-);
 
 const createRfq = async (userId, data) => {
   const rfqNumber = `RFQ-${Date.now()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
