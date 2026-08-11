@@ -1,5 +1,6 @@
 const express = require('express');
 const morgan = require('morgan');
+const crypto = require('crypto');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
@@ -13,6 +14,13 @@ const app = express();
 
 // Security Headers
 app.use(helmet());
+
+// Request ID Middleware
+app.use((req, res, next) => {
+  req.id = req.headers['x-request-id'] || crypto.randomUUID();
+  res.setHeader('X-Request-Id', req.id);
+  next();
+});
 
 // CORS Configuration
 const allowedOrigins = [
@@ -53,13 +61,24 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 // Structured Logging with Morgan and Winston
-const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
 app.use(
-  morgan(morganFormat, {
-    stream: { write: (message) => logger.info(message.trim()) },
-    // Skip normal morgan logging in test to keep console clean, winston handles silent config
-    skip: () => process.env.NODE_ENV === 'test'
-  })
+  morgan(
+    (tokens, req, res) => {
+      return JSON.stringify({
+        requestId: req.id,
+        userId: req.user?.id || null,
+        method: tokens.method(req, res),
+        route: tokens.url(req, res),
+        statusCode: tokens.status(req, res),
+        durationMs: tokens['response-time'](req, res)
+      });
+    },
+    {
+      stream: { write: (message) => logger.info(message.trim()) },
+      // Skip normal morgan logging in test to keep console clean, winston handles silent config
+      skip: () => process.env.NODE_ENV === 'test'
+    }
+  )
 );
 
 app.use(express.json());

@@ -67,6 +67,33 @@ describe('Authorization & RBAC', () => {
     await prisma.$disconnect();
   });
 
+  describe('Authentication', () => {
+    it('should deny access without token', async () => {
+      const res = await request(app).get('/api/v1/auth/me');
+      expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+
+    it('should deny access with malformed token', async () => {
+      const res = await request(app)
+        .get('/api/v1/auth/me')
+        .set('Cookie', ['token=malformed.token.here']);
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('should deny access to admin routes for CUSTOMER', async () => {
+      // Assuming GET /api/v1/admin/dashboard exists, or we use a known admin route
+      // Let's use RFQ quote creation as a known admin action that tests role check
+      const res = await request(app)
+        .post(`/api/v1/rfq/${userRfq.id}/quote`)
+        .set('Cookie', [`token=${userToken}`])
+        .send({ subtotalMinor: 100, totalMinor: 100, validUntil: new Date() });
+      expect(res.statusCode).toBe(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+    });
+  });
+
   describe('Orders', () => {
     it('should deny access to another user order', async () => {
       const res = await request(app)
@@ -133,6 +160,22 @@ describe('Authorization & RBAC', () => {
         .set('Cookie', [`token=${adminToken}`])
         .send({ subtotalMinor: 500, totalMinor: 500, validUntil: new Date() });
       expect(res.statusCode).toBe(201);
+      global.testQuoteId = res.body.data.id;
+    });
+    
+    it('should allow owner to view their quote', async () => {
+      const res = await request(app)
+        .get(`/api/v1/rfq/${userRfq.id}/quotes`)
+        .set('Cookie', [`token=${userToken}`]);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.length).toBeGreaterThan(0);
+    });
+
+    it('should deny access to another user quote', async () => {
+      const res = await request(app)
+        .get(`/api/v1/rfq/${userRfq.id}/quotes`)
+        .set('Cookie', [`token=${otherUserToken}`]);
+      expect(res.statusCode).toBe(404); // RFQ ownership check fails
     });
   });
 });

@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
-    "start:prod": "npx prisma migrate deploy && node src/server.js",
+    "start:prod": "node src/server.js",
+    "migrate:deploy": "npx prisma migrate deploy",
     "dev": "nodemon src/server.js",
     "test": "jest --runInBand",
     "seed": "node src/infrastructure/database/seed.js",

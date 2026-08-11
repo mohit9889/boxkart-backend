@@ -33,8 +33,27 @@ router.use('/api/v1/quotes', quoteRoutes);
 router.use('/api/v1/custom-packaging', customPackagingRoutes);
 router.use('/api/v1/admin', adminRoutes);
 
+const prisma = require('../infrastructure/database/prismaClient');
+
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+router.get('/health/ready', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({
+      status: 'ready',
+      database: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      database: 'disconnected',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 module.exports = router;

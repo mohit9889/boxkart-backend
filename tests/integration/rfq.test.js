@@ -68,6 +68,22 @@ describe('RFQ API', () => {
     expect(res.body.data.length).toBe('200');
   });
 
+  it('should reject submitting an RFQ without items', async () => {
+    // Create a new empty RFQ
+    const emptyRfq = await request(app)
+      .post('/api/v1/rfq')
+      .set('Cookie', [`token=${token}`])
+      .send({ requiredQuantity: 100, packagingType: 'CORRUGATED_BOX' });
+      
+    const res = await request(app)
+      .post(`/api/v1/rfq/${emptyRfq.body.data.id}/submit`)
+      .set('Cookie', [`token=${token}`]);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.message).toBe('Cannot submit an empty RFQ');
+  });
+
   it('should upload a mock attachment', async () => {
     const buffer = Buffer.from('mock file content');
     const res = await request(app)
@@ -89,6 +105,15 @@ describe('RFQ API', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.status).toBe(RFQ_STATES.SUBMITTED);
+  });
+
+  it('should reject modifying items of a submitted RFQ', async () => {
+    const res = await request(app)
+      .post(`/api/v1/rfq/${rfqId}/items`)
+      .set('Cookie', [`token=${token}`])
+      .send({ length: 200, width: 100, height: 100, dimensionUnit: 'MM', quantity: 1000, material: 'KRAFT' });
+
+    expect(res.statusCode).toBe(400); // Bad request, state mismatch
   });
 
   it('should allow admin to create a Quote', async () => {

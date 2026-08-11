@@ -22,7 +22,7 @@ const normalizeToMM = (val, unit) => {
 };
 
 const normalizeWeightToKG = (val, unit) => {
-  if (val === undefined || val === null) return undefined;
+  if (val === undefined || val === null || val === 0) return 0;
   const value = Number(val);
   if (typeof value !== 'number' || isNaN(value)) {
     throw new Error(`Invalid weight value: ${val}`);
@@ -61,6 +61,10 @@ const calculateFit = (product, box) => {
   const bL = normalizeToMM(box.length, box.unit);
   const bW = normalizeToMM(box.width, box.unit);
   const bH = normalizeToMM(box.height, box.unit);
+
+  if (pL <= 0 || pW <= 0 || pH <= 0 || bL <= 0 || bW <= 0 || bH <= 0) {
+    return { fits: false };
+  }
 
   const productVolume = pL * pW * pH;
   const boxVolume = bL * bW * bH;
@@ -120,8 +124,11 @@ const calculateScore = (
 
   // Price score (0-100). Lower price is better.
   const maxPrice = 5000;
-  let priceScore = ((maxPrice - (basePrice || maxPrice)) / maxPrice) * 100;
-  if (priceScore < 0) priceScore = 0;
+  let priceScore = 100;
+  if (basePrice !== null && basePrice !== undefined) {
+    priceScore = ((maxPrice - basePrice) / maxPrice) * 100;
+    if (priceScore < 0) priceScore = 0;
+  }
 
   // Mocking protection and availability since we don't have real data yet.
   const protectionScore = 80;

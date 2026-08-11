@@ -721,83 +721,16 @@ Test browser authentication against the actual Vercel → Render domain setup.
 
 # Phase 8 — Observability and CI
 
-## TASK-030 — Add request IDs
-
-**Priority:** P2
-
-Add `X-Request-Id` and include the ID in logs.
-
----
-
-## TASK-031 — Improve structured logging
-
-**Priority:** P2
-
-Log:
-
-```text
-requestId
-userId
-method
-route
-statusCode
-durationMs
-errorCode
-```
-
-Never log secrets, passwords, cookies, JWTs, or service-role credentials.
-
----
-
-## TASK-032 — Add GitHub Actions CI
-
-**Priority:** P2
-
-Create CI that runs:
-
-```text
-npm ci
-npm test
-Prisma validation/generation
-OpenAPI validation
-format check
-```
-
-Deployment must not proceed if required checks fail.
+- `[x]` TASK-030: Add request IDs
+- `[x]` TASK-031: Improve structured logging
+- `[x]` TASK-032: Add GitHub Actions CI
 
 ---
 
 # Phase 9 — Render deployment
 
-## TASK-033 — Create Render deployment configuration
-
-**Priority:** P1 after P0/P1 hardening
-
-### Target
-
-```text
-GitHub main
-   ↓
-Render Web Service
-   ↓
-Box Engine
-```
-
-Configure:
-
-- build command
-- start command
-- health check
-- environment variables
-- auto deploy from main
-
-Do not put secrets in GitHub.
-
----
-
-## TASK-034 — Production smoke tests
-
-**Priority:** P1
+- `[x]` TASK-033: Create Render deployment configuration
+- `[ ]` TASK-034: Production smoke tests (Requires manual deployment)
 
 After deployment verify:
 

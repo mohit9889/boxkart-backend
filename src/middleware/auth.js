@@ -1,4 +1,4 @@
-const { verifyToken } = require('../modules/auth/token.service');
+const AppError = require('../utils/AppError');
 const prisma = require('../infrastructure/database/prismaClient');
 const jwt = require('jsonwebtoken');
 
@@ -6,69 +6,43 @@ const requireAuth = async (req, res, next) => {
   const token = req.cookies.token;
 
   if (!token) {
-    return res.status(401).json({
-      success: false,
-      error: {
-        code: 'UNAUTHORIZED',
-        message: 'Authentication required'
-      }
-    });
-  }
-
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  if (!decoded || !decoded.userId) {
-    return res.status(401).json({
-      success: false,
-      error: {
-        code: 'UNAUTHORIZED',
-        message: 'Invalid or expired token'
-      }
-    });
+    return next(new AppError('Authentication required', { code: 'UNAUTHORIZED', statusCode: 401 }));
   }
 
   try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded || !decoded.userId) {
+      return next(new AppError('Invalid or expired token', { code: 'UNAUTHORIZED', statusCode: 401 }));
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId }
     });
 
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'User is inactive or deleted'
-        }
-      });
+      return next(new AppError('User is inactive or deleted', { code: 'UNAUTHORIZED', statusCode: 401 }));
     }
 
     req.user = user;
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    res
-      .status(500)
-      .json({ error: 'Internal server error during authentication' });
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return next(new AppError('Invalid or expired token', { code: 'UNAUTHORIZED', statusCode: 401 }));
+    }
+    next(error);
   }
 };
 
 const requireAdmin = async (req, res, next) => {
-  // First ensure user is authenticated
-  requireAuth(req, res, async () => {
+  requireAuth(req, res, async (err) => {
+    if (err) return next(err);
     try {
       if (req.user.role !== 'ADMIN') {
-        return res
-          .status(403)
-          .json({
-            success: false,
-            error: { message: 'Forbidden: Admin access required' }
-          });
+        return next(new AppError('Forbidden: Admin access required', { code: 'FORBIDDEN', statusCode: 403 }));
       }
       next();
     } catch (error) {
-      console.error('Admin middleware error:', error);
-      res
-        .status(500)
-        .json({ success: false, error: { message: 'Internal server error' } });
+      next(error);
     }
   });
 };

@@ -226,4 +226,106 @@ describe('Order API', () => {
     // Given the lack of initial quantity check in the test setup, just checking the transition works is fine.
     expect(product.inventory.availableQuantity).toBeDefined();
   });
+  it('should reject order if a product is inactive', async () => {
+    // Make product inactive
+    await prisma.product.update({
+      where: { id: validProductId },
+      data: { status: 'INACTIVE' }
+    });
+
+    const address = await prisma.address.findUnique({ where: { id: global.testAddressId } });
+    const cart = await prisma.cart.findFirst({ where: { userId: address.userId } });
+
+    // Add to cart directly in DB because API might block inactive products
+    await prisma.cartItem.create({
+      data: {
+        cartId: cart.id,
+        productId: validProductId,
+        quantity: 100
+      }
+    });
+
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set('Cookie', [`token=${token}`])
+      .send({ shippingAddressId: global.testAddressId });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.message).toMatch(/is not active/);
+
+    // Restore product
+    await prisma.product.update({
+      where: { id: validProductId },
+      data: { status: 'ACTIVE' }
+    });
+  });
+
+  it('should reject order if stock is insufficient', async () => {
+    await request(app)
+      .post('/api/v1/cart/items')
+      .set('Cookie', [`token=${token}`])
+      .send({ productId: validProductId, quantity: 5000 }); // More than available 2000
+
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set('Cookie', [`token=${token}`])
+      .send({ shippingAddressId: global.testAddressId });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('INSUFFICIENT_INVENTORY');
+  });
+
+  it('should reject order if shipping address belongs to someone else', async () => {
+    // Clear cart
+    await request(app).delete('/api/v1/cart').set('Cookie', [`token=${token}`]);
+    
+    // Add valid item
+    await request(app)
+      .post('/api/v1/cart/items')
+      .set('Cookie', [`token=${token}`])
+      .send({ productId: validProductId, quantity: 100 });
+
+    // Create an address for the admin user
+    const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+    const adminAddress = await prisma.address.create({
+      data: {
+        userId: adminUser.id,
+        fullName: 'Admin Address',
+        phone: '0000000000',
+        addressLine1: 'Admin St',
+        city: 'Admin City',
+        state: 'AD',
+        postalCode: '000000',
+        country: 'IN'
+      }
+    });
+
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set('Cookie', [`token=${token}`])
+      .send({ shippingAddressId: adminAddress.id });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  it('should store an immutable snapshot of the shipping address', async () => {
+    // Create new order with valid address
+    const key = `snapshot-idemp-key-${Date.now()}`;
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set('Cookie', [`token=${token}`])
+      .set('Idempotency-Key', key)
+      .send({ shippingAddressId: global.testAddressId });
+
+    expect(res.statusCode).toBe(201);
+    
+    // Check DB snapshot
+    const dbOrder = await prisma.order.findUnique({ where: { id: res.body.data.id } });
+    expect(dbOrder.shippingAddressSnapshot).toBeDefined();
+    expect(dbOrder.shippingAddressSnapshot.city).toBe('Test City');
+  });
+
 });

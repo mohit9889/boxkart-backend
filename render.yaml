@@ -4,7 +4,9 @@ services:
     env: node
     plan: starter
     buildCommand: npm ci && npx prisma generate
+    preDeployCommand: npm run migrate:deploy
     startCommand: npm run start:prod
+    healthCheckPath: /health/ready
     envVars:
       - key: NODE_ENV
         value: production
