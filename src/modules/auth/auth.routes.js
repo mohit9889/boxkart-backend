@@ -6,7 +6,7 @@ const { requireAuth } = require('../../middleware/auth');
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 requests per `window` for auth routes
+  max: 5, // Limit each IP to 5 requests per `window` for auth routes
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -21,6 +21,7 @@ const authLimiter = rateLimit({
 router.get('/csrf-token', authController.getCsrfToken);
 router.post('/signup', authLimiter, authController.signup);
 router.post('/login', authLimiter, authController.login);
+router.post('/refresh', authLimiter, authController.refresh);
 router.post('/logout', authController.logout);
 router.get('/me', requireAuth, authController.me);
 

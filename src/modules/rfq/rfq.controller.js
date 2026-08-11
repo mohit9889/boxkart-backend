@@ -1,8 +1,8 @@
 const rfqService = require('./rfq.service');
-const { rfqSchema, rfqItemSchema, quoteSchema } = require('./rfq.validation');
+const { rfqSchema, rfqItemSchema, quoteSchema, acceptQuoteSchema } = require('./rfq.validation');
 const AppError = require('../../utils/AppError');
 
-const createRfq = async (req, res) => {
+const createRfq = async (req, res, next) => {
   try {
     const validatedData = rfqSchema.parse(req.body);
     const rfq = await rfqService.createRfq(req.user.id, validatedData);
@@ -30,8 +30,12 @@ const getRfq = async (req, res, next) => {
 
 const getUserRfqs = async (req, res, next) => {
   try {
-    const rfqs = await rfqService.getUserRfqs(req.user.id);
-    res.status(200).json({ success: true, data: rfqs });
+    const { page = 1, limit = 20 } = req.query;
+    const rfqs = await rfqService.getUserRfqs(req.user.id, page, limit);
+    res.json({
+      success: true,
+      ...rfqs
+    });
   } catch (error) {
     next(error);
   }
@@ -111,13 +115,42 @@ const createQuote = async (req, res, next) => {
 
 const acceptQuote = async (req, res, next) => {
   try {
+    const { shippingAddressId, billingAddressId } = acceptQuoteSchema.parse(req.body);
+    const idempotencyKey = req.headers['idempotency-key'];
+
+    if (!idempotencyKey || typeof idempotencyKey !== 'string' || idempotencyKey.length < 16 || idempotencyKey.length > 128) {
+      return next(new AppError('Idempotency-Key header is required and must be between 16 and 128 characters', {
+        code: 'IDEMPOTENCY_KEY_REQUIRED',
+        statusCode: 400
+      }));
+    }
+
     const order = await rfqService.acceptQuote(
       req.user.id,
       req.params.id,
       req.params.quoteId,
+      shippingAddressId,
+      billingAddressId,
+      idempotencyKey,
       req.user.role
     );
     res.status(200).json({ success: true, data: order });
+  } catch (error) {
+    if (error.name === 'ZodError') {
+      return next(new AppError('Validation failed', {
+        code: 'VALIDATION_ERROR',
+        statusCode: 400,
+        details: error.errors
+      }));
+    }
+    next(error);
+  }
+};
+
+const cancelRfq = async (req, res, next) => {
+  try {
+    const rfq = await rfqService.cancelRfq(req.user.id, req.params.id, req.user.role);
+    res.status(200).json({ success: true, data: rfq });
   } catch (error) {
     next(error);
   }
@@ -132,6 +165,7 @@ module.exports = {
   uploadAttachment,
   createQuote,
   acceptQuote,
+  cancelRfq,
 
   getRfqQuotes: async (req, res, next) => {
     try {

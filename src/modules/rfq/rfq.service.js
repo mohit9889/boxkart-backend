@@ -10,7 +10,7 @@ const AppError = require('../../utils/AppError');
 
 const supabase = createClient(
   process.env.SUPABASE_URL || 'https://mock.supabase.co',
-  process.env.SUPABASE_KEY || 'mock-key'
+  process.env.SUPABASE_SERVICE_KEY || 'mock-key'
 );
 
 const createRfq = async (userId, data) => {
@@ -33,6 +33,23 @@ const createRfq = async (userId, data) => {
   });
 };
 
+const signAttachmentUrls = async (rfq) => {
+  if (!rfq.attachments || rfq.attachments.length === 0) return rfq;
+  
+  const signedAttachments = await Promise.all(
+    rfq.attachments.map(async (att) => {
+      if (!att.fileUrl.startsWith('http')) {
+        const { data } = await supabase.storage
+          .from('rfq-attachments')
+          .createSignedUrl(att.fileUrl, 3600);
+        return { ...att, fileUrl: data?.signedUrl || att.fileUrl };
+      }
+      return att;
+    })
+  );
+  return { ...rfq, attachments: signedAttachments };
+};
+
 const getRfqById = async (userId, rfqId, userRole = 'CUSTOMER') => {
   const rfq = await prisma.rFQ.findUnique({
     where: { id: rfqId },
@@ -47,15 +64,36 @@ const getRfqById = async (userId, rfqId, userRole = 'CUSTOMER') => {
     throw new AppError('RFQ not found', { code: 'RFQ_NOT_FOUND', statusCode: 404 });
   }
 
-  return rfq;
+  return await signAttachmentUrls(rfq);
 };
 
-const getUserRfqs = async (userId) => {
-  return await prisma.rFQ.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-    include: { items: true, quotes: true }
-  });
+const getUserRfqs = async (userId, page = 1, limit = 20) => {
+  const skip = (page - 1) * limit;
+  const [rfqs, total] = await Promise.all([
+    prisma.rFQ.findMany({
+      where: { userId },
+      skip,
+      take: parseInt(limit, 10),
+      orderBy: { createdAt: 'desc' },
+      include: {
+        items: true,
+        attachments: true
+      }
+    }),
+    prisma.rFQ.count({ where: { userId } })
+  ]);
+  
+  const signedRfqs = await Promise.all(rfqs.map(signAttachmentUrls));
+
+  return {
+    data: signedRfqs,
+    meta: {
+      total,
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      totalPages: Math.ceil(total / limit)
+    }
+  };
 };
 
 const addRfqItem = async (userId, rfqId, itemData) => {
@@ -108,6 +146,10 @@ const uploadAttachment = async (userId, rfqId, file) => {
     throw new AppError('Can only attach files to DRAFT RFQs', { code: 'INVALID_RFQ_STATE', statusCode: 400 });
   }
 
+  if (rfq.attachments && rfq.attachments.length >= 5) {
+    throw new AppError('Maximum of 5 attachments allowed per RFQ', { code: 'MAX_ATTACHMENTS_EXCEEDED', statusCode: 400 });
+  }
+
   const fileExt = file.originalname.split('.').pop();
   const fileName = `${rfqId}/${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${fileExt}`;
 
@@ -124,19 +166,24 @@ const uploadAttachment = async (userId, rfqId, file) => {
     throw new AppError('File upload failed', { code: 'STORAGE_ERROR', statusCode: 500 });
   }
 
-  const { data: publicUrlData } = supabase.storage
-    .from('rfq-attachments')
-    .getPublicUrl(fileName);
+  const fileType = file.mimetype.startsWith('image/') ? 'IMAGE' : 'DOCUMENT';
 
-  return await prisma.rFQAttachment.create({
+  const attachment = await prisma.rFQAttachment.create({
     data: {
       rfqId,
       fileName: file.originalname,
-      fileUrl: publicUrlData.publicUrl,
-      fileType: 'IMAGE', // Simplified
+      fileUrl: fileName, // Store raw path for dynamic signed URLs
+      fileType,
       fileSize: file.size
     }
   });
+  
+  // Return with a signed URL immediately for the response
+  const { data: signedData } = await supabase.storage
+    .from('rfq-attachments')
+    .createSignedUrl(fileName, 3600);
+    
+  return { ...attachment, fileUrl: signedData?.signedUrl || fileName };
 };
 
 const createQuote = async (adminId, rfqId, quoteData) => {
@@ -173,7 +220,7 @@ const createQuote = async (adminId, rfqId, quoteData) => {
   });
 };
 
-const acceptQuote = async (userId, rfqId, quoteId, userRole = 'CUSTOMER') => {
+const acceptQuote = async (userId, rfqId, quoteId, shippingAddressId, billingAddressId, idempotencyKey, userRole = 'CUSTOMER') => {
   const rfq = await getRfqById(userId, rfqId, userRole);
   const quote = rfq.quotes.find((q) => q.id === quoteId);
 
@@ -183,10 +230,44 @@ const acceptQuote = async (userId, rfqId, quoteId, userRole = 'CUSTOMER') => {
   validateRfqTransition(rfq.status, RFQ_STATES.ACCEPTED);
 
   return await prisma.$transaction(async (tx) => {
-    await tx.quote.update({
-      where: { id: quoteId },
+    if (idempotencyKey) {
+      const existingOrder = await tx.order.findUnique({
+        where: { idempotencyKey },
+        include: { items: true, payments: true }
+      });
+      if (existingOrder) {
+        if (existingOrder.userId !== userId) {
+          throw new AppError('Idempotency key already in use', { code: 'IDEMPOTENCY_CONFLICT', statusCode: 409 });
+        }
+        return existingOrder;
+      }
+    }
+
+    const shippingAddress = await tx.address.findUnique({ where: { id: shippingAddressId } });
+    if (!shippingAddress || shippingAddress.userId !== userId) {
+      throw new AppError('Invalid shipping address', { code: 'VALIDATION_ERROR', statusCode: 400 });
+    }
+    
+    let billingAddress = shippingAddress;
+    if (billingAddressId && billingAddressId !== shippingAddressId) {
+      billingAddress = await tx.address.findUnique({ where: { id: billingAddressId } });
+      if (!billingAddress || billingAddress.userId !== userId) {
+        throw new AppError('Invalid billing address', { code: 'VALIDATION_ERROR', statusCode: 400 });
+      }
+    }
+
+    if (quote.validUntil && new Date() > new Date(quote.validUntil)) {
+      throw new AppError('Quote has expired', { code: 'QUOTE_EXPIRED', statusCode: 400 });
+    }
+
+    const updateResult = await tx.quote.updateMany({
+      where: { id: quoteId, status: quote.status },
       data: { status: 'ACCEPTED' }
     });
+    
+    if (updateResult.count === 0) {
+      throw new AppError('Quote state changed unexpectedly', { code: 'CONCURRENCY_ERROR', statusCode: 409 });
+    }
 
     await tx.rFQ.update({
       where: { id: rfqId },
@@ -211,48 +292,81 @@ const acceptQuote = async (userId, rfqId, quoteId, userRole = 'CUSTOMER') => {
         }
       });
       productId = product.id;
+
+      await tx.inventory.create({
+        data: {
+          productId: productId,
+          availableQuantity: rfq.requiredQuantity || 1,
+          reservedQuantity: 0
+        }
+      });
     }
 
-    const order = await tx.order.create({
+    const requiredQty = rfq.requiredQuantity || 1;
+    const inventoryUpdateResult = await tx.inventory.updateMany({
+      where: {
+        productId: productId,
+        availableQuantity: { gte: requiredQty }
+      },
       data: {
-        orderNumber,
-        userId,
-        status: 'PENDING',
-        paymentStatus: 'PENDING',
-        subtotalMinor: quote.subtotalMinor,
-        discountMinor: quote.discountMinor,
-        shippingMinor: quote.shippingMinor,
-        taxMinor: quote.taxMinor,
-        totalMinor: quote.totalMinor,
-        currency: 'INR',
-        shippingAddressSnapshot: {},
-        billingAddressSnapshot: {},
-        items: {
-          create: [
-            {
-              productId: productId,
-              skuSnapshot: 'RFQ-CUSTOM',
-              nameSnapshot: 'Custom RFQ Packaging',
-              quantity: rfq.requiredQuantity || 1,
-              unitPriceMinor: Math.floor(
-                quote.subtotalMinor / (rfq.requiredQuantity || 1)
-              ),
-              totalMinor: quote.subtotalMinor,
-              productSnapshot: { rfqId: rfq.id }
-            }
-          ]
-        },
-        payments: {
-          create: {
-            provider: 'MANUAL',
-            status: 'PENDING',
-            amountMinor: quote.totalMinor,
-            method: 'COD',
-            currency: 'INR'
-          }
-        }
+        availableQuantity: { decrement: requiredQty },
+        reservedQuantity: { increment: requiredQty }
       }
     });
+
+    if (inventoryUpdateResult.count !== 1) {
+      throw new AppError(`Insufficient stock for product`, { code: 'INSUFFICIENT_INVENTORY', statusCode: 409 });
+    }
+
+    let order;
+    try {
+      order = await tx.order.create({
+        data: {
+          orderNumber,
+          idempotencyKey,
+          userId,
+          status: 'PENDING',
+          paymentStatus: 'PENDING',
+          subtotalMinor: quote.subtotalMinor,
+          discountMinor: quote.discountMinor,
+          shippingMinor: quote.shippingMinor,
+          taxMinor: quote.taxMinor,
+          totalMinor: quote.totalMinor,
+          currency: 'INR',
+          shippingAddressSnapshot: shippingAddress,
+          billingAddressSnapshot: billingAddress,
+          items: {
+            create: [
+              {
+                productId: productId,
+                skuSnapshot: 'RFQ-CUSTOM',
+                nameSnapshot: 'Custom RFQ Packaging',
+                quantity: requiredQty,
+                unitPriceMinor: Math.floor(
+                  quote.subtotalMinor / requiredQty
+                ),
+                totalMinor: quote.subtotalMinor,
+                productSnapshot: { rfqId: rfq.id }
+              }
+            ]
+          },
+          payments: {
+            create: {
+              provider: 'MANUAL',
+              status: 'PENDING',
+              amountMinor: quote.totalMinor,
+              method: 'COD',
+              currency: 'INR'
+            }
+          }
+        }
+      });
+    } catch (error) {
+      if (error.code === 'P2002' && error.meta?.target?.includes('idempotencyKey')) {
+        throw new AppError('Idempotency key already in use', { code: 'IDEMPOTENCY_CONFLICT', statusCode: 409 });
+      }
+      throw error;
+    }
 
     await tx.rFQ.update({
       where: { id: rfqId },
@@ -261,6 +375,29 @@ const acceptQuote = async (userId, rfqId, quoteId, userRole = 'CUSTOMER') => {
 
     return order;
   });
+};
+
+const cancelRfq = async (userId, rfqId, userRole = 'CUSTOMER') => {
+  const rfq = await getRfqById(userId, rfqId, userRole);
+  
+  validateRfqTransition(rfq.status, RFQ_STATES.CANCELLED);
+  
+  const cancelledRfq = await prisma.rFQ.update({
+    where: { id: rfqId },
+    data: { status: RFQ_STATES.CANCELLED },
+    include: { items: true, attachments: true }
+  });
+
+  if (cancelledRfq.attachments && cancelledRfq.attachments.length > 0) {
+    const filePaths = cancelledRfq.attachments.map(att => att.fileUrl);
+    try {
+      await supabase.storage.from('rfq-attachments').remove(filePaths);
+    } catch (error) {
+      console.error('Failed to cleanup attachments from Supabase on RFQ cancellation:', error);
+    }
+  }
+
+  return cancelledRfq;
 };
 
 module.exports = {
@@ -272,6 +409,7 @@ module.exports = {
   uploadAttachment,
   createQuote,
   acceptQuote,
+  cancelRfq,
 
   getRfqQuotes: async (rfqId, userId, userRole = 'CUSTOMER') => {
     // Verify user owns the RFQ or is admin

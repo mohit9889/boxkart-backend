@@ -14,13 +14,17 @@ const createProductSchema = z.object({
   name: z.string().min(2).max(200),
   slug: z.string().min(2).max(200),
   description: z.string().max(2000).optional(),
-  status: z.enum(['DRAFT', 'ACTIVE', 'INACTIVE', 'ARCHIVED']),
+  status: z.enum(['DRAFT', 'ACTIVE', 'INACTIVE', 'DISCONTINUED']),
   productType: z.enum([
     'CORRUGATED_BOX',
+    'MAILER_BOX',
+    'PAPER_MAILER',
+    'BUBBLE_MAILER',
     'TAPE',
-    'MAILER',
+    'STRETCH_FILM',
     'VOID_FILL',
-    'ACCESSORY'
+    'INSERT',
+    'OTHER'
   ]),
   categoryId: z.string().uuid(),
   // Attributes
@@ -32,7 +36,7 @@ const createProductSchema = z.object({
   internalWidth: z.number().positive().optional(),
   internalHeight: z.number().positive().optional(),
   weight: z.number().positive().optional(),
-  weightUnit: z.enum(['KG', 'G', 'LB', 'OZ']).optional(),
+  weightUnit: z.enum(['GRAM', 'KG', 'LB']).optional(),
   // Specs
   material: z.string().optional(),
   ply: z.number().int().positive().optional(),

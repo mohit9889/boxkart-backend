@@ -35,8 +35,14 @@ const quoteSchema = z.object({
   totalMinor: z.number().int().nonnegative()
 });
 
+const acceptQuoteSchema = z.object({
+  shippingAddressId: z.string().uuid(),
+  billingAddressId: z.string().uuid().optional()
+});
+
 module.exports = {
   rfqSchema,
   rfqItemSchema,
-  quoteSchema
+  quoteSchema,
+  acceptQuoteSchema
 };

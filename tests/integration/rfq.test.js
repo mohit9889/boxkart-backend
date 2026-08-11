@@ -34,6 +34,21 @@ describe('RFQ API', () => {
     });
     
     adminToken = adminLoginRes.headers['set-cookie'][0].split(';')[0].split('=')[1];
+
+    const user = await prisma.user.findUnique({ where: { email: uniqueEmail } });
+    const address = await prisma.address.create({
+      data: {
+        userId: user.id,
+        fullName: 'Test User',
+        phone: '1234567890',
+        addressLine1: '123 Test St',
+        city: 'Test City',
+        state: 'TS',
+        postalCode: '123456',
+        country: 'IN'
+      }
+    });
+    global.rfqTestAddressId = address.id;
   });
 
   afterAll(async () => {
@@ -152,7 +167,9 @@ describe('RFQ API', () => {
   it('should accept Quote and convert to Order', async () => {
     const res = await request(app)
       .post(`/api/v1/rfq/${rfqId}/quotes/${quoteId}/accept`)
-      .set('Cookie', [`token=${token}`]);
+      .set('Cookie', [`token=${token}`])
+      .set('Idempotency-Key', `ik-rfq-${Date.now()}-${Math.random()}`)
+      .send({ shippingAddressId: global.rfqTestAddressId });
 
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);

@@ -19,7 +19,7 @@ const requireAuth = async (req, res, next) => {
       where: { id: decoded.userId }
     });
 
-    if (!user) {
+    if (!user || user.status !== 'ACTIVE') {
       return next(new AppError('User is inactive or deleted', { code: 'UNAUTHORIZED', statusCode: 401 }));
     }
 

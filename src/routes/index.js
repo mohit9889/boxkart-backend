@@ -39,6 +39,10 @@ router.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+router.get('/health/live', (req, res) => {
+  res.status(200).json({ status: 'alive', timestamp: new Date().toISOString() });
+});
+
 router.get('/health/ready', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;

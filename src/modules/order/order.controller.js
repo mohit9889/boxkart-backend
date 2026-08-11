@@ -35,8 +35,9 @@ const createOrder = async (req, res, next) => {
 
 const getOrders = async (req, res, next) => {
   try {
-    const orders = await orderService.getUserOrders(req.user.id);
-    res.status(200).json({ success: true, data: orders });
+    const { page = 1, limit = 20 } = req.query;
+    const orders = await orderService.getUserOrders(req.user.id, page, limit);
+    res.status(200).json({ success: true, ...orders });
   } catch (error) {
     next(error);
   }

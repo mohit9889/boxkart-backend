@@ -13,6 +13,9 @@ const { env } = require('./config/env');
 
 const app = express();
 
+// Trust proxy for rate limiting behind load balancers
+app.set('trust proxy', 1);
+
 // Security Headers
 app.use(helmet());
 

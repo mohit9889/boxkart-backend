@@ -145,15 +145,28 @@ const createOrder = async (userId, shippingAddressId, billingAddressId, idempote
   });
 };
 
-const getUserOrders = async (userId) => {
-  return await prisma.order.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      items: true,
-      payments: true
+const getUserOrders = async (userId, page = 1, limit = 20) => {
+  const skip = (page - 1) * limit;
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      where: { userId },
+      skip,
+      take: parseInt(limit, 10),
+      orderBy: { createdAt: 'desc' },
+      include: { items: true, payments: true }
+    }),
+    prisma.order.count({ where: { userId } })
+  ]);
+  
+  return {
+    data: orders,
+    meta: {
+      total,
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      totalPages: Math.ceil(total / limit)
     }
-  });
+  };
 };
 
 const getOrderById = async (userId, orderId) => {
@@ -191,6 +204,13 @@ const updateOrderStatus = async (userId, orderId, newStatus, userRole = 'CUSTOME
     }
 
     validateTransition(order.status, newStatus);
+
+    if (['PROCESSING', 'READY_TO_SHIP', 'SHIPPED', 'DELIVERED'].includes(newStatus)) {
+      const isCod = order.payments?.some(p => p.method === 'COD');
+      if (order.paymentStatus !== 'PAID' && !isCod) {
+        throw new AppError('Cannot process unpaid order unless COD', { code: 'PAYMENT_REQUIRED', statusCode: 400 });
+      }
+    }
 
     if (newStatus === 'CANCELLED' || newStatus === 'FAILED') {
       for (const item of order.items) {

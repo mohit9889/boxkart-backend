@@ -903,6 +903,85 @@ paths:
                         type: string
                       details:
                         type: object
+  /rfqs:
+    post:
+      tags:
+        - RFQ
+      summary: Create an RFQ
+      description: Submit a new request for quotation.
+      responses:
+        '201':
+          description: RFQ created successfully
+    get:
+      tags:
+        - RFQ
+      summary: Get user RFQs
+      description: Retrieve a list of RFQs for the current user.
+      responses:
+        '200':
+          description: List of RFQs
+  /rfqs/{id}:
+    get:
+      tags:
+        - RFQ
+      summary: Get an RFQ by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: RFQ details
+  /rfqs/{id}/submit:
+    post:
+      tags:
+        - RFQ
+      summary: Submit an RFQ
+      description: Submit a draft RFQ for review.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: RFQ submitted successfully
+  /rfqs/{id}/cancel:
+    post:
+      tags:
+        - RFQ
+      summary: Cancel an RFQ
+      description: Cancel an active RFQ that is in a valid state for cancellation.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: RFQ cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    description: The updated RFQ object
+        '400':
+          description: Invalid RFQ state for cancellation
+        '404':
+          description: RFQ not found
 components:
   securitySchemes:
     cookieAuth:

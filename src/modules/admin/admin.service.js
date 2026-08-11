@@ -1,29 +1,43 @@
 const prisma = require('../../infrastructure/database/prismaClient');
+const AppError = require('../../utils/AppError');
 
+const handleP2002 = (error, resource) => {
+  if (error.code === 'P2002') {
+    const field = error.meta?.target?.[0] || 'Field';
+    throw new AppError(`${resource} with this ${field} already exists.`, { code: 'CONFLICT', statusCode: 409 });
+  }
+  throw error;
+};
 const createCategory = async (data) => {
-  return prisma.category.create({
-    data
-  });
+  try {
+    return await prisma.category.create({ data });
+  } catch (error) {
+    handleP2002(error, 'Category');
+  }
 };
 
 const updateCategory = async (id, data) => {
-  return prisma.category.update({
-    where: { id },
-    data
-  });
+  try {
+    return await prisma.category.update({ where: { id }, data });
+  } catch (error) {
+    handleP2002(error, 'Category');
+  }
 };
 
 const createProduct = async (data) => {
-  return prisma.product.create({
-    data
-  });
+  try {
+    return await prisma.product.create({ data });
+  } catch (error) {
+    handleP2002(error, 'Product');
+  }
 };
 
 const updateProduct = async (id, data) => {
-  return prisma.product.update({
-    where: { id },
-    data
-  });
+  try {
+    return await prisma.product.update({ where: { id }, data });
+  } catch (error) {
+    handleP2002(error, 'Product');
+  }
 };
 
 const getOrders = async (page = 1, limit = 20) => {

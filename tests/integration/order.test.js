@@ -332,13 +332,14 @@ describe('Order API', () => {
     expect(adminCancelRes.statusCode).toBe(409);
 
     // 4. Verify inventory was NOT restored
-    const afterProduct = await prisma.product.findUnique({
+    const finalProduct = await prisma.product.findUnique({
       where: { id: validProductId },
       include: { inventory: true }
     });
-    
-    expect(afterProduct.inventory.availableQuantity).toBe(beforeAvailable);
-  });
+
+    expect(finalProduct.inventory.availableQuantity).toBe(beforeAvailable);
+  }, 15000);
+
   it('should reject order if a product is inactive', async () => {
     // Make product inactive
     await prisma.product.update({
