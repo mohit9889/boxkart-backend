@@ -5,6 +5,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const logger = require('./infrastructure/logging/logger');
+const AppError = require('./utils/AppError');
 const routes = require('./routes');
 const { env } = require('./config/env');
 
@@ -15,8 +16,7 @@ app.use(helmet());
 
 // CORS Configuration
 const allowedOrigins = [
-  `http://localhost:${env.PORT}`,
-  'http://localhost:3005', // Swagger UI
+  `http://localhost:${env.PORT}`, // Backend & Swagger UI
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
@@ -41,7 +41,10 @@ const globalLimiter = rateLimit({
   legacyHeaders: false,
   message: {
     success: false,
-    error: { message: 'Too many requests, please try again later.' }
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many requests. Please try again later.'
+    }
   },
   // Skip rate limiting in test environment
   skip: () => process.env.NODE_ENV === 'test'
@@ -67,7 +70,13 @@ app.use('/', routes);
 
 // Handle 404
 app.use((req, res, next) => {
-  res.status(404).json({ success: false, error: { message: 'Not Found' } });
+  res.status(404).json({
+    success: false,
+    error: {
+      code: 'ROUTE_NOT_FOUND',
+      message: 'Route not found'
+    }
+  });
 });
 
 // Global Error Handler
@@ -75,18 +84,34 @@ app.use((err, req, res, next) => {
   logger.error(err.stack);
 
   if (err.message === 'Not allowed by CORS') {
-    return res
-      .status(403)
-      .json({ success: false, error: { message: 'CORS policy violation' } });
+    return res.status(403).json({
+      success: false,
+      error: {
+        code: 'FORBIDDEN',
+        message: 'CORS policy violation'
+      }
+    });
   }
 
-  const statusCode = err.statusCode || 500;
-  const message =
-    process.env.NODE_ENV === 'production' && statusCode === 500
-      ? 'Internal server error'
-      : err.message;
+  if (err instanceof AppError) {
+    return res.status(err.statusCode).json({
+      success: false,
+      error: {
+        code: err.code,
+        message: err.message,
+        ...(Object.keys(err.details || {}).length > 0 && { details: err.details })
+      }
+    });
+  }
 
-  res.status(statusCode).json({ success: false, error: { message } });
+  // Unexpected errors
+  res.status(500).json({
+    success: false,
+    error: {
+      code: 'INTERNAL_SERVER_ERROR',
+      message: 'Internal server error'
+    }
+  });
 });
 
 module.exports = app;

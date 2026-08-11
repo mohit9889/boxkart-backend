@@ -23,9 +23,9 @@ describe('Authentication API', () => {
       });
 
     expect(res.statusCode).toBe(201);
-    expect(res.body.message).toBe('User created successfully');
-    expect(res.body.user.email).toBe(testEmail);
-    expect(res.body.user.role).toBe('CUSTOMER');
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.email).toBe(testEmail);
+    expect(res.body.data.role).toBe('CUSTOMER');
   });
 
   it('should prevent signing up with an existing email', async () => {
@@ -37,7 +37,8 @@ describe('Authentication API', () => {
       });
 
     expect(res.statusCode).toBe(400);
-    expect(res.body.error).toBe('Email already in use');
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.message).toBe('Email already in use');
   });
 
   it('should log in an existing user and return a cookie', async () => {
@@ -49,7 +50,7 @@ describe('Authentication API', () => {
       });
 
     expect(res.statusCode).toBe(200);
-    expect(res.body.message).toBe('Login successful');
+    expect(res.body.success).toBe(true);
     
     const setCookie = res.headers['set-cookie'];
     expect(setCookie).toBeDefined();
@@ -73,7 +74,8 @@ describe('Authentication API', () => {
       .set('Cookie', cookie);
 
     expect(res.statusCode).toBe(200);
-    expect(res.body.user.email).toBe(testEmail);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.email).toBe(testEmail);
   });
 
   it('should reject unauthenticated access to /me', async () => {

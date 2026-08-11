@@ -33,7 +33,7 @@ describe('Box Engine API', () => {
       expect(topRecommendation).toHaveProperty('product');
       expect(topRecommendation).toHaveProperty('fit', true);
       expect(topRecommendation).toHaveProperty('score');
-      expect(topRecommendation.pricing.currency).toBe('USD');
+      expect(topRecommendation.pricing.currency).toBe('INR');
     }
   });
 
@@ -49,9 +49,9 @@ describe('Box Engine API', () => {
         }
       });
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.data.length).toBe(0);
+    expect(res.statusCode).toBe(404);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('NO_FIT_FOUND');
   });
 
   it('should validate inputs and return 400 for bad data', async () => {

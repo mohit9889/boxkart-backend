@@ -1,7 +1,8 @@
 const rfqService = require('../rfq/rfq.service');
 const { rfqItemSchema } = require('../rfq/rfq.validation');
+const AppError = require('../../utils/AppError');
 
-const createCustomPackagingRequest = async (req, res) => {
+const createCustomPackagingRequest = async (req, res, next) => {
   try {
     const itemData = rfqItemSchema.parse(req.body);
 
@@ -17,17 +18,13 @@ const createCustomPackagingRequest = async (req, res) => {
     res.status(201).json({ success: true, data: { rfq, item } });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: { message: 'Validation failed', details: error.errors }
-        });
+      return next(new AppError('Validation failed', {
+        code: 'VALIDATION_ERROR',
+        statusCode: 400,
+        details: error.errors
+      }));
     }
-    console.error('createCustomPackagingRequest error:', error);
-    res
-      .status(500)
-      .json({ success: false, error: { message: 'Internal server error' } });
+    next(error);
   }
 };
 

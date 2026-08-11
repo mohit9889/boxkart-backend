@@ -1,5 +1,6 @@
 const prisma = require('../../infrastructure/database/prismaClient');
-const { calculateUnitPrice, calculateSubtotal } = require('./pricing.domain');
+const { calculateSubtotal, selectApplicablePriceTier } = require('./pricing.domain');
+const AppError = require('../../utils/AppError');
 
 const calculatePriceForProduct = async (productId, quantity) => {
   const product = await prisma.product.findUnique({
@@ -10,17 +11,22 @@ const calculatePriceForProduct = async (productId, quantity) => {
   });
 
   if (!product || product.status !== 'ACTIVE') {
-    throw new Error('Product not found or inactive');
+    throw new AppError('Product not found or inactive', { code: 'PRODUCT_NOT_FOUND', statusCode: 404 });
   }
 
   try {
-    const unitPriceMinor = calculateUnitPrice(quantity, product.priceTiers);
+    const matchingTier = selectApplicablePriceTier(quantity, product.priceTiers);
+    if (!matchingTier) {
+      throw new AppError('INVALID_QUANTITY', { code: 'INVALID_QUANTITY', statusCode: 400 });
+    }
+
+    const unitPriceMinor = matchingTier.unitPriceMinor;
     const subtotalMinor = calculateSubtotal(unitPriceMinor, quantity);
 
     return {
       unitPriceMinor,
       subtotalMinor,
-      currency: 'USD',
+      currency: matchingTier.currency,
       quantity,
       product: {
         id: product.id,
@@ -33,8 +39,9 @@ const calculatePriceForProduct = async (productId, quantity) => {
       const minTier = [...product.priceTiers].sort(
         (a, b) => a.minimumQuantity - b.minimumQuantity
       )[0];
-      throw new Error(
-        `Minimum order quantity is ${minTier ? minTier.minimumQuantity : 'unknown'}`
+      throw new AppError(
+        `Minimum order quantity is ${minTier ? minTier.minimumQuantity : 'unknown'}`,
+        { code: 'BELOW_MOQ', statusCode: 400 }
       );
     }
     throw error;

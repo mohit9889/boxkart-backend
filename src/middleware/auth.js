@@ -1,16 +1,29 @@
 const { verifyToken } = require('../modules/auth/token.service');
 const prisma = require('../infrastructure/database/prismaClient');
+const jwt = require('jsonwebtoken');
 
 const requireAuth = async (req, res, next) => {
   const token = req.cookies.token;
 
   if (!token) {
-    return res.status(401).json({ error: 'Authentication required' });
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Authentication required'
+      }
+    });
   }
 
-  const decoded = verifyToken(token);
-  if (!decoded) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  if (!decoded || !decoded.userId) {
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Invalid or expired token'
+      }
+    });
   }
 
   try {
@@ -18,8 +31,14 @@ const requireAuth = async (req, res, next) => {
       where: { id: decoded.userId }
     });
 
-    if (!user || user.status !== 'ACTIVE') {
-      return res.status(401).json({ error: 'User is inactive or deleted' });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'User is inactive or deleted'
+        }
+      });
     }
 
     req.user = user;

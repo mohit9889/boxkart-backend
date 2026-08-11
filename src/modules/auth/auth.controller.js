@@ -2,6 +2,7 @@ const prisma = require('../../infrastructure/database/prismaClient');
 const { signupSchema, loginSchema } = require('./auth.validation');
 const { hashPassword, comparePassword } = require('./password.service');
 const { generateToken } = require('./token.service');
+const AppError = require('../../utils/AppError');
 
 const cookieOptions = {
   httpOnly: true,
@@ -10,7 +11,7 @@ const cookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
-const signup = async (req, res) => {
+const signup = async (req, res, next) => {
   try {
     const validatedData = signupSchema.parse(req.body);
 
@@ -19,7 +20,10 @@ const signup = async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({ error: 'Email already in use' });
+      return next(new AppError('Email already in use', {
+        code: 'VALIDATION_ERROR',
+        statusCode: 400
+      }));
     }
 
     const passwordHash = await hashPassword(validatedData.password);
@@ -35,8 +39,8 @@ const signup = async (req, res) => {
     });
 
     res.status(201).json({
-      message: 'User created successfully',
-      user: {
+      success: true,
+      data: {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
@@ -46,16 +50,17 @@ const signup = async (req, res) => {
     });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return res
-        .status(400)
-        .json({ error: 'Validation failed', details: error.errors });
+      return next(new AppError('Validation failed', {
+        code: 'VALIDATION_ERROR',
+        statusCode: 400,
+        details: error.errors
+      }));
     }
-    console.error('Signup error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    next(error);
   }
 };
 
-const login = async (req, res) => {
+const login = async (req, res, next) => {
   try {
     const validatedData = loginSchema.parse(req.body);
 
@@ -64,9 +69,10 @@ const login = async (req, res) => {
     });
 
     if (!user || user.status !== 'ACTIVE') {
-      return res
-        .status(401)
-        .json({ error: 'Invalid credentials or inactive account' });
+      return next(new AppError('Invalid credentials or inactive account', {
+        code: 'UNAUTHORIZED',
+        statusCode: 401
+      }));
     }
 
     const isValid = await comparePassword(
@@ -75,7 +81,10 @@ const login = async (req, res) => {
     );
 
     if (!isValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return next(new AppError('Invalid credentials', {
+        code: 'UNAUTHORIZED',
+        statusCode: 401
+      }));
     }
 
     const token = generateToken(user.id, user.role);
@@ -88,8 +97,8 @@ const login = async (req, res) => {
     });
 
     res.status(200).json({
-      message: 'Login successful',
-      user: {
+      success: true,
+      data: {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
@@ -99,23 +108,24 @@ const login = async (req, res) => {
     });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return res
-        .status(400)
-        .json({ error: 'Validation failed', details: error.errors });
+      return next(new AppError('Validation failed', {
+        code: 'VALIDATION_ERROR',
+        statusCode: 400,
+        details: error.errors
+      }));
     }
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    next(error);
   }
 };
 
 const logout = (req, res) => {
   res.clearCookie('token');
-  res.status(200).json({ message: 'Logged out successfully' });
+  res.status(200).json({ success: true, data: null });
 };
 
 const me = (req, res) => {
   const { passwordHash, ...userWithoutPassword } = req.user;
-  res.status(200).json({ user: userWithoutPassword });
+  res.status(200).json({ success: true, data: userWithoutPassword });
 };
 
 module.exports = {

@@ -3,7 +3,7 @@
  * Strict integer arithmetic only.
  */
 
-const calculateUnitPrice = (quantity, priceTiers) => {
+const selectApplicablePriceTier = (quantity, priceTiers) => {
   if (!Number.isInteger(quantity) || quantity <= 0) {
     throw new Error('Quantity must be a positive integer');
   }
@@ -16,15 +16,19 @@ const calculateUnitPrice = (quantity, priceTiers) => {
     (a, b) => b.minimumQuantity - a.minimumQuantity
   );
 
-  let matchingTier = null;
   for (const tier of sortedTiers) {
     if (quantity >= tier.minimumQuantity) {
       if (!tier.maximumQuantity || quantity <= tier.maximumQuantity) {
-        matchingTier = tier;
-        break;
+        return tier;
       }
     }
   }
+
+  return null;
+};
+
+const calculateUnitPrice = (quantity, priceTiers) => {
+  const matchingTier = selectApplicablePriceTier(quantity, priceTiers);
 
   if (!matchingTier) {
     throw new Error('INVALID_QUANTITY');
@@ -41,6 +45,7 @@ const calculateSubtotal = (unitPriceMinor, quantity) => {
 };
 
 module.exports = {
+  selectApplicablePriceTier,
   calculateUnitPrice,
   calculateSubtotal
 };

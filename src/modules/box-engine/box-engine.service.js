@@ -4,6 +4,8 @@ const {
   calculateScore,
   normalizeWeightToKG
 } = require('./fit.domain');
+const AppError = require('../../utils/AppError');
+const { selectApplicablePriceTier } = require('../pricing/pricing.domain');
 
 const recommendBoxes = async (input) => {
   const { product: inputProduct, requirements } = input;
@@ -15,11 +17,7 @@ const recommendBoxes = async (input) => {
     },
     include: {
       boxSpecification: true,
-      priceTiers: {
-        where: { minimumQuantity: { lte: requirements.quantity } },
-        orderBy: { minimumQuantity: 'desc' },
-        take: 1
-      }
+      priceTiers: true
     }
   });
 
@@ -32,8 +30,9 @@ const recommendBoxes = async (input) => {
   for (const candidate of candidates) {
     const spec = candidate.boxSpecification;
 
-    if (normalizedInputWeight && spec.maxWeightCapacity) {
-      if (normalizedInputWeight > spec.maxWeightCapacity) {
+    if (normalizedInputWeight && spec.maxRecommendedWeight) {
+      const boxMaxWeightKG = normalizeWeightToKG(spec.maxRecommendedWeight, spec.weightUnit);
+      if (normalizedInputWeight > boxMaxWeightKG) {
         continue;
       }
     }
@@ -42,15 +41,21 @@ const recommendBoxes = async (input) => {
       length: spec.internalLength,
       width: spec.internalWidth,
       height: spec.internalHeight,
-      unit: 'MM'
+      unit: spec.dimensionUnit
     };
 
     const fitResult = calculateFit(inputProduct, boxDims);
 
     if (fitResult.fits) {
       let basePrice = null;
+      let currency = 'INR';
+
       if (candidate.priceTiers && candidate.priceTiers.length > 0) {
-        basePrice = candidate.priceTiers[0].unitPriceMinor;
+        const applicableTier = selectApplicablePriceTier(requirements.quantity, candidate.priceTiers);
+        if (applicableTier) {
+          basePrice = applicableTier.unitPriceMinor;
+          currency = applicableTier.currency;
+        }
       }
 
       const scoreData = calculateScore(fitResult, basePrice);
@@ -70,13 +75,20 @@ const recommendBoxes = async (input) => {
         scoreBreakdown: scoreData.breakdown,
         pricing: {
           unitPriceMinor: basePrice,
-          currency: 'USD'
+          currency: currency
         }
       });
     }
   }
 
   recommendations.sort((a, b) => b.score - a.score);
+
+  if (recommendations.length === 0) {
+    throw new AppError('No suitable box found', {
+      code: 'NO_FIT_FOUND',
+      statusCode: 404
+    });
+  }
 
   return recommendations;
 };

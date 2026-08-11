@@ -55,7 +55,7 @@ describe('Admin API', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(Array.isArray(res.body.orders)).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
   });
   
   it('should allow admin to create a category', async () => {

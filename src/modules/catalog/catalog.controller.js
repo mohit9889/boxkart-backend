@@ -1,5 +1,6 @@
 const prisma = require('../../infrastructure/database/prismaClient');
 const { productQuerySchema } = require('./catalog.validation');
+const AppError = require('../../utils/AppError');
 
 const getCategories = async (req, res) => {
   try {
@@ -9,14 +10,11 @@ const getCategories = async (req, res) => {
     });
     res.status(200).json({ success: true, data: categories });
   } catch (error) {
-    console.error('getCategories error:', error);
-    res
-      .status(500)
-      .json({ success: false, error: { message: 'Internal server error' } });
+    next(error);
   }
 };
 
-const getCategoryBySlug = async (req, res) => {
+const getCategoryBySlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
     const category = await prisma.category.findUnique({
@@ -24,21 +22,16 @@ const getCategoryBySlug = async (req, res) => {
     });
 
     if (!category || category.status !== 'ACTIVE') {
-      return res
-        .status(404)
-        .json({ success: false, error: { message: 'Category not found' } });
+      return next(new AppError('Category not found', { code: 'CATEGORY_NOT_FOUND', statusCode: 404 }));
     }
 
     res.status(200).json({ success: true, data: category });
   } catch (error) {
-    console.error('getCategoryBySlug error:', error);
-    res
-      .status(500)
-      .json({ success: false, error: { message: 'Internal server error' } });
+    next(error);
   }
 };
 
-const getProducts = async (req, res) => {
+const getProducts = async (req, res, next) => {
   try {
     const query = productQuerySchema.parse(req.query);
 
@@ -102,21 +95,17 @@ const getProducts = async (req, res) => {
     });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: { message: 'Validation failed', details: error.errors }
-        });
+      return next(new AppError('Validation failed', {
+        code: 'VALIDATION_ERROR',
+        statusCode: 400,
+        details: error.errors
+      }));
     }
-    console.error('getProducts error:', error);
-    res
-      .status(500)
-      .json({ success: false, error: { message: 'Internal server error' } });
+    next(error);
   }
 };
 
-const getProductBySlug = async (req, res) => {
+const getProductBySlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
     const product = await prisma.product.findUnique({
@@ -131,17 +120,12 @@ const getProductBySlug = async (req, res) => {
     });
 
     if (!product || product.status !== 'ACTIVE') {
-      return res
-        .status(404)
-        .json({ success: false, error: { message: 'Product not found' } });
+      return next(new AppError('Product not found', { code: 'PRODUCT_NOT_FOUND', statusCode: 404 }));
     }
 
     res.status(200).json({ success: true, data: product });
   } catch (error) {
-    console.error('getProductBySlug error:', error);
-    res
-      .status(500)
-      .json({ success: false, error: { message: 'Internal server error' } });
+    next(error);
   }
 };
 

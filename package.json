@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "start:prod": "npx prisma migrate deploy && node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest",
+    "test": "jest --runInBand",
     "seed": "node src/infrastructure/database/seed.js",
     "format": "prettier --write \"src/**/*.js\""
   },

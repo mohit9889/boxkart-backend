@@ -9,9 +9,9 @@ describe('Order State Machine', () => {
   });
 
   it('should prevent invalid transitions', () => {
-    expect(() => validateTransition(ORDER_STATES.DELIVERED, ORDER_STATES.PENDING)).toThrow(/Illegal state transition/);
-    expect(() => validateTransition(ORDER_STATES.PENDING, ORDER_STATES.SHIPPED)).toThrow(/Illegal state transition/);
-    expect(() => validateTransition(ORDER_STATES.CANCELLED, ORDER_STATES.CONFIRMED)).toThrow(/Illegal state transition/);
+    expect(() => validateTransition(ORDER_STATES.DELIVERED, ORDER_STATES.PENDING)).toThrow(/Cannot transition/);
+    expect(() => validateTransition(ORDER_STATES.PENDING, ORDER_STATES.SHIPPED)).toThrow(/Cannot transition/);
+    expect(() => validateTransition(ORDER_STATES.CANCELLED, ORDER_STATES.CONFIRMED)).toThrow(/Cannot transition/);
   });
 
   it('should throw on unknown states', () => {

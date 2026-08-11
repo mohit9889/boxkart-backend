@@ -20,7 +20,7 @@ const LEGAL_TRANSITIONS = {
     ORDER_STATES.CANCELLED
   ],
   [ORDER_STATES.CONFIRMED]: [ORDER_STATES.PROCESSING, ORDER_STATES.CANCELLED],
-  [ORDER_STATES.PROCESSING]: [ORDER_STATES.READY_TO_SHIP],
+  [ORDER_STATES.PROCESSING]: [ORDER_STATES.READY_TO_SHIP, ORDER_STATES.CANCELLED],
   [ORDER_STATES.READY_TO_SHIP]: [ORDER_STATES.SHIPPED],
   [ORDER_STATES.SHIPPED]: [ORDER_STATES.DELIVERED],
   [ORDER_STATES.DELIVERED]: [], // Terminal state
@@ -28,15 +28,21 @@ const LEGAL_TRANSITIONS = {
   [ORDER_STATES.FAILED]: [] // Terminal state
 };
 
+const AppError = require('../../utils/AppError');
+
 const validateTransition = (currentState, targetState) => {
   const allowed = LEGAL_TRANSITIONS[currentState];
   if (!allowed) {
-    throw new Error(`Unknown state: ${currentState}`);
+    throw new AppError(`Unknown state: ${currentState}`, {
+      code: 'INVALID_ORDER_STATE',
+      statusCode: 409
+    });
   }
 
   if (!allowed.includes(targetState)) {
-    throw new Error(
-      `Illegal state transition from ${currentState} to ${targetState}`
+    throw new AppError(
+      `Cannot transition from ${currentState} to ${targetState}`,
+      { code: 'INVALID_ORDER_STATE', statusCode: 409 }
     );
   }
 

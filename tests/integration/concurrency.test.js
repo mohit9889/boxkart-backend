@@ -16,7 +16,8 @@ describe('Concurrency Testing', () => {
     });
     token = loginRes.headers['set-cookie'][0].split(';')[0].split('=')[1];
 
-    const box = await prisma.product.findFirst({ where: { status: 'ACTIVE' } });
+    const box = await prisma.product.findFirst({ where: { sku: 'BOX-M-01' } });
+    await prisma.product.update({ where: { id: box.id }, data: { status: 'ACTIVE' } });
     productId = box.id;
   });
 

@@ -321,6 +321,7 @@ model Order {
   totalMinor Int @default(0)
   shippingAddressSnapshot Json
   billingAddressSnapshot Json
+  idempotencyKey String? @unique
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
   items OrderItem[]
   payments Payment[]

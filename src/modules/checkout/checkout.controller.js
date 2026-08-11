@@ -1,7 +1,8 @@
 const { previewSchema } = require('./checkout.validation');
 const { calculatePriceForProduct } = require('../pricing/pricing.service');
+const AppError = require('../../utils/AppError');
 
-const preview = async (req, res) => {
+const preview = async (req, res, next) => {
   try {
     const { items } = previewSchema.parse(req.body);
 
@@ -38,25 +39,13 @@ const preview = async (req, res) => {
     });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: { message: 'Validation failed', details: error.errors }
-        });
+      return next(new AppError('Validation failed', {
+        code: 'VALIDATION_ERROR',
+        statusCode: 400,
+        details: error.errors
+      }));
     }
-    if (
-      error.message.includes('Minimum order quantity') ||
-      error.message.includes('Product not found')
-    ) {
-      return res
-        .status(400)
-        .json({ success: false, error: { message: error.message } });
-    }
-    console.error('checkout preview error:', error);
-    res
-      .status(500)
-      .json({ success: false, error: { message: 'Internal server error' } });
+    next(error);
   }
 };
 

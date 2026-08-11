@@ -1,7 +1,8 @@
 const { recommendSchema } = require('./box-engine.validation');
 const { recommendBoxes } = require('./box-engine.service');
+const AppError = require('../../utils/AppError');
 
-const recommend = async (req, res) => {
+const recommend = async (req, res, next) => {
   try {
     const validatedData = recommendSchema.parse(req.body);
 
@@ -16,17 +17,13 @@ const recommend = async (req, res) => {
     });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: { message: 'Validation failed', details: error.errors }
-        });
+      return next(new AppError('Validation failed', {
+        code: 'VALIDATION_ERROR',
+        statusCode: 400,
+        details: error.errors
+      }));
     }
-    console.error('Box Finder error:', error);
-    res
-      .status(500)
-      .json({ success: false, error: { message: 'Internal server error' } });
+    next(error);
   }
 };
 

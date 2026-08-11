@@ -1,37 +1,88 @@
 const prisma = require('../../infrastructure/database/prismaClient');
-const { calculatePriceForProduct } = require('../pricing/pricing.service');
+const { selectApplicablePriceTier, calculateSubtotal } = require('../pricing/pricing.domain');
 const { validateTransition } = require('./order.domain');
+const AppError = require('../../utils/AppError');
 const crypto = require('crypto');
 
-const createOrder = async (userId) => {
+const createOrder = async (userId, shippingAddressId, billingAddressId, idempotencyKey) => {
   return await prisma.$transaction(async (tx) => {
+    if (idempotencyKey) {
+      const existingOrder = await tx.order.findUnique({
+        where: { idempotencyKey },
+        include: { items: true, payments: true }
+      });
+      if (existingOrder) {
+        if (existingOrder.userId !== userId) {
+          throw new AppError('Idempotency key already in use', { code: 'IDEMPOTENCY_CONFLICT', statusCode: 409 });
+        }
+        return existingOrder;
+      }
+    }
+
+    const shippingAddress = await tx.address.findUnique({ where: { id: shippingAddressId } });
+    if (!shippingAddress || shippingAddress.userId !== userId) {
+      throw new AppError('Invalid shipping address', { code: 'VALIDATION_ERROR', statusCode: 400 });
+    }
+    
+    let billingAddress = shippingAddress;
+    if (billingAddressId && billingAddressId !== shippingAddressId) {
+      billingAddress = await tx.address.findUnique({ where: { id: billingAddressId } });
+      if (!billingAddress || billingAddress.userId !== userId) {
+        throw new AppError('Invalid billing address', { code: 'VALIDATION_ERROR', statusCode: 400 });
+      }
+    }
+
     const cart = await tx.cart.findUnique({
       where: { userId },
       include: { items: { include: { product: true } } }
     });
 
     if (!cart || cart.items.length === 0) {
-      throw new Error('Cart is empty');
+      throw new AppError('Cart is empty', { code: 'VALIDATION_ERROR', statusCode: 400 });
     }
 
     let subtotalMinor = 0;
     const orderItemsData = [];
 
     for (const item of cart.items) {
-      const pricing = await calculatePriceForProduct(
-        item.productId,
-        item.quantity
-      );
+      const product = await tx.product.findUnique({
+        where: { id: item.productId },
+        include: { priceTiers: true, inventory: true }
+      });
 
-      subtotalMinor += pricing.subtotalMinor;
+      if (!product || product.status !== 'ACTIVE') {
+        throw new AppError(`Product ${item.product.sku} is not active`, { code: 'PRODUCT_INACTIVE', statusCode: 400 });
+      }
+
+      const matchingTier = selectApplicablePriceTier(item.quantity, product.priceTiers);
+      if (!matchingTier) {
+        throw new AppError(`Minimum order quantity not met for ${product.sku}`, { code: 'BELOW_MOQ', statusCode: 400 });
+      }
+
+      if (!product.inventory || product.inventory.availableQuantity < item.quantity) {
+        throw new AppError(`Insufficient stock for ${product.sku}`, { code: 'INSUFFICIENT_INVENTORY', statusCode: 409 });
+      }
+
+      await tx.inventory.update({
+        where: { productId: product.id },
+        data: {
+          availableQuantity: { decrement: item.quantity },
+          reservedQuantity: { increment: item.quantity }
+        }
+      });
+
+      const unitPriceMinor = matchingTier.unitPriceMinor;
+      const itemSubtotalMinor = calculateSubtotal(unitPriceMinor, item.quantity);
+
+      subtotalMinor += itemSubtotalMinor;
 
       orderItemsData.push({
         productId: item.productId,
         skuSnapshot: item.product.sku,
         nameSnapshot: item.product.name,
         quantity: item.quantity,
-        unitPriceMinor: pricing.unitPriceMinor,
-        totalMinor: pricing.subtotalMinor,
+        unitPriceMinor,
+        totalMinor: itemSubtotalMinor,
         productSnapshot: item.product
       });
     }
@@ -41,14 +92,15 @@ const createOrder = async (userId) => {
     const order = await tx.order.create({
       data: {
         orderNumber,
+        idempotencyKey,
         userId,
         status: 'PENDING',
         paymentStatus: 'PENDING',
         subtotalMinor: subtotalMinor,
         totalMinor: subtotalMinor, // Simplification for MVP
         currency: 'INR',
-        shippingAddressSnapshot: {},
-        billingAddressSnapshot: {},
+        shippingAddressSnapshot: shippingAddress,
+        billingAddressSnapshot: billingAddress,
         items: {
           create: orderItemsData
         },
@@ -97,21 +149,49 @@ const getOrderById = async (userId, orderId) => {
   });
 
   if (!order || order.userId !== userId) {
-    throw new Error('Order not found');
+    throw new AppError('Order not found', { code: 'ORDER_NOT_FOUND', statusCode: 404 });
   }
 
   return order;
 };
 
-const updateOrderStatus = async (userId, orderId, newStatus) => {
-  const order = await getOrderById(userId, orderId);
+const updateOrderStatus = async (userId, orderId, newStatus, userRole = 'CUSTOMER') => {
+  return await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: true,
+        payments: true
+      }
+    });
 
-  validateTransition(order.status, newStatus);
+    if (!order) {
+      throw new AppError('Order not found', { code: 'ORDER_NOT_FOUND', statusCode: 404 });
+    }
 
-  return await prisma.order.update({
-    where: { id: orderId },
-    data: { status: newStatus },
-    include: { items: true, payments: true }
+    if (order.userId !== userId && userRole !== 'ADMIN') {
+      throw new AppError('Order not found', { code: 'ORDER_NOT_FOUND', statusCode: 404 });
+    }
+
+    validateTransition(order.status, newStatus);
+
+    if (newStatus === 'CANCELLED' || newStatus === 'FAILED') {
+      for (const item of order.items) {
+        await tx.inventory.update({
+          where: { productId: item.productId },
+          data: {
+            availableQuantity: { increment: item.quantity },
+            reservedQuantity: { decrement: item.quantity }
+          }
+        });
+      }
+    }
+
+    return await tx.order.update({
+      where: { id: orderId },
+      data: { status: newStatus },
+      include: { items: true, payments: true }
+    });
   });
 };
 

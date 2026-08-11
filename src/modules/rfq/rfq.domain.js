@@ -1,6 +1,7 @@
 /**
  * Pure domain logic for RFQ and Quotes
  */
+const AppError = require('../../utils/AppError');
 
 const RFQ_STATES = {
   DRAFT: 'DRAFT',
@@ -67,8 +68,9 @@ const LEGAL_QUOTE_TRANSITIONS = {
 const validateRfqTransition = (currentState, nextState) => {
   const allowed = LEGAL_RFQ_TRANSITIONS[currentState];
   if (!allowed || !allowed.includes(nextState)) {
-    throw new Error(
-      `Illegal state transition from ${currentState} to ${nextState}`
+    throw new AppError(
+      `Illegal state transition from ${currentState} to ${nextState}`,
+      { code: 'INVALID_RFQ_STATE', statusCode: 400 }
     );
   }
 };
@@ -76,8 +78,9 @@ const validateRfqTransition = (currentState, nextState) => {
 const validateQuoteTransition = (currentState, nextState) => {
   const allowed = LEGAL_QUOTE_TRANSITIONS[currentState];
   if (!allowed || !allowed.includes(nextState)) {
-    throw new Error(
-      `Illegal state transition from ${currentState} to ${nextState}`
+    throw new AppError(
+      `Illegal state transition from ${currentState} to ${nextState}`,
+      { code: 'INVALID_QUOTE_STATE', statusCode: 400 }
     );
   }
 };

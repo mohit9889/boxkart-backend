@@ -1,5 +1,6 @@
 const prisma = require('../../infrastructure/database/prismaClient');
 const { calculatePriceForProduct } = require('../pricing/pricing.service');
+const AppError = require('../../utils/AppError');
 
 const getCart = async (userId) => {
   let cart = await prisma.cart.findUnique({
@@ -109,7 +110,7 @@ const updateItem = async (userId, itemId, quantity) => {
   });
 
   if (!item || item.cart.userId !== userId) {
-    throw new Error('Item not found in your cart');
+    throw new AppError('Item not found in your cart', { code: 'CART_ITEM_NOT_FOUND', statusCode: 404 });
   }
 
   await calculatePriceForProduct(item.productId, quantity);
@@ -129,7 +130,7 @@ const removeItem = async (userId, itemId) => {
   });
 
   if (!item || item.cart.userId !== userId) {
-    throw new Error('Item not found in your cart');
+    throw new AppError('Item not found in your cart', { code: 'CART_ITEM_NOT_FOUND', statusCode: 404 });
   }
 
   await prisma.cartItem.delete({
@@ -161,7 +162,7 @@ module.exports = {
     // Normally this checks stock availability and price changes
     const cart = await getCart(userId);
     if (!cart) {
-      throw new Error('Cart not found');
+      throw new AppError('Cart not found', { code: 'CART_NOT_FOUND', statusCode: 404 });
     }
 
     // Perform any checks here (e.g. min order qty, which is already enforced on add/update)
