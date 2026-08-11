@@ -82,31 +82,40 @@ For order-enabled environments, also test order creation and order retrieval wit
 
 ## 4. Monitoring
 
-At MVP scale, monitor at least:
+For the MVP, keep monitoring lightweight and actionable:
 
-- Render service health.
-- Application startup failures.
-- HTTP 5xx frequency.
-- HTTP 429 frequency.
-- Database readiness failures.
-- Order creation failures.
-- Inventory failures.
-- RFQ upload failures.
+- **Uptime Monitoring:** Configure UptimeRobot, BetterUptime, or a similar external tool to ping `https://box-engine.onrender.com/health` every 5 minutes.
+- **Infrastructure Readiness:** Render is configured to ping `/health/ready` to ensure database connectivity before routing traffic.
+- **Log Monitoring:** Filter Render's log streams for HTTP 5xx or `error` level messages.
+- **Alerting:** Route downtime and 5xx alerts to a dedicated engineering email or Slack channel.
 
-Use request IDs to correlate frontend reports with server logs.
+Use request IDs in logs to correlate frontend reports with server failures.
 
-## 5. Database backups
+## 5. Database continuity
 
-A production operating procedure must explicitly document:
+Current Supabase Configuration (Verified):
+- **Provider:** Supabase
+- **Region:** ap-south-1 (Mumbai)
+- **Plan:** Free Tier
+- **Backups:** Daily logical backups
+- **Retention:** 24 hours
+- **PITR (Point-in-Time Recovery):** Not available on Free Tier (Requires Pro)
+- **Restore mechanism:** Manual download of daily SQL dump and execution against a new project.
 
-- Database provider.
-- Automatic backup status.
-- Retention period.
-- Point-in-time recovery availability.
-- Restoration procedure.
-- Last restore test date.
+### Quarterly Restore Drill
+A quarterly restore drill is required to ensure business continuity. Execute the following sequence:
 
-Do not consider a database production-ready solely because backups are enabled; restoration must be possible and periodically verified.
+1. Download the latest daily backup from the Supabase Dashboard.
+2. Spin up a new Staging Project in Supabase.
+3. Restore the SQL dump into the staging database.
+4. Run `npx prisma migrate deploy` to ensure migration compatibility.
+5. Point the local application (`.env`) to the staging database and ensure the application starts.
+6. Verify critical data integrity:
+   - Authentication works (login as test user).
+   - Catalog and Box Engine calculations work.
+   - Orders can be read.
+   - RFQs can be read.
+   - No unexpected data corruption exists.
 
 ## 6. Incident response
 

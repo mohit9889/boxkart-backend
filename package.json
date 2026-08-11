@@ -10,7 +10,11 @@
     "dev": "nodemon src/server.js",
     "test": "jest --runInBand",
     "seed": "node src/infrastructure/database/seed.js",
-    "format": "prettier --write \"src/**/*.js\""
+    "format": "prettier --write \"src/**/*.js\"",
+    "openapi:validate": "swagger-cli validate src/api-spec/openapi.yaml"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "keywords": [],
   "author": "",
@@ -34,6 +38,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@apidevtools/swagger-cli": "^4.0.4",
     "jest": "^30.4.2",
     "nodemon": "^3.1.14",
     "prettier": "^3.9.6",

@@ -16,9 +16,19 @@ Operational endpoints:
 /api/reference
 ```
 
-## 2. Render deployment model
+## 2. Deployment workflow
 
-The service installs dependencies, generates the Prisma client, applies committed migrations, and starts the Node.js application.
+The deployment process follows a strict Continuous Integration gate:
+
+1. **GitHub Actions (CI):** Pull requests and merges to `main` trigger a CI pipeline.
+   - Spins up ephemeral PostgreSQL container.
+   - Runs `npm ci`, `prisma generate`, `prisma migrate deploy`.
+   - Runs `npm test` and OpenAPI validation.
+   - Runs `npm audit`.
+2. **GitHub Branch Protection:** A PR cannot be merged into `main` unless the CI pipeline passes.
+3. **Render Auto-Deploy:** Once merged into `main`, Render automatically triggers a deployment.
+
+The Render service installs dependencies, generates the Prisma client, applies committed migrations, and starts the Node.js application.
 
 Production-style start command:
 
