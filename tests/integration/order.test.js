@@ -227,7 +227,15 @@ describe('Order API', () => {
     expect(res.body.error.message).toMatch(/Cannot transition/);
   });
 
-  it('should allow cancellation and release inventory', async () => {
+  it('should allow cancellation and release inventory exactly once', async () => {
+    // Record inventory before cancellation
+    const beforeProduct = await prisma.product.findUnique({
+      where: { id: validProductId },
+      include: { inventory: true }
+    });
+    const beforeAvailable = beforeProduct.inventory.availableQuantity;
+    const beforeReserved = beforeProduct.inventory.reservedQuantity;
+
     const res = await request(app)
       .patch(`/api/v1/orders/${orderId}/status`)
       .set('Cookie', [`token=${token}`])
@@ -236,15 +244,100 @@ describe('Order API', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.data.status).toBe('CANCELLED');
 
-    // Verify inventory was restored
-    const product = await prisma.product.findUnique({
+    // Verify inventory was restored exactly (+500 available, -500 reserved)
+    // since the initial order placed 500 units.
+    const afterProduct = await prisma.product.findUnique({
       where: { id: validProductId },
       include: { inventory: true }
     });
     
-    // Original was some amount, but we want to make sure it's higher than it would be without cancellation.
-    // Given the lack of initial quantity check in the test setup, just checking the transition works is fine.
-    expect(product.inventory.availableQuantity).toBeDefined();
+    expect(afterProduct.inventory.availableQuantity).toBe(beforeAvailable + 500);
+    expect(afterProduct.inventory.reservedQuantity).toBe(beforeReserved - 500);
+
+    // Try cancelling AGAIN to ensure it doesn't restore twice
+    const res2 = await request(app)
+      .patch(`/api/v1/orders/${orderId}/status`)
+      .set('Cookie', [`token=${token}`])
+      .send({ status: 'CANCELLED' });
+
+    // validateTransition blocks CANCELLED -> CANCELLED
+    expect(res2.statusCode).toBe(409);
+    
+    // Inventory shouldn't change
+    const afterProduct2 = await prisma.product.findUnique({
+      where: { id: validProductId },
+      include: { inventory: true }
+    });
+    
+    expect(afterProduct2.inventory.availableQuantity).toBe(afterProduct.inventory.availableQuantity);
+  });
+
+  it('should prevent cancellation of SHIPPED orders and not release inventory', async () => {
+    // 1. Clear cart to be safe
+    await request(app)
+      .delete('/api/v1/cart')
+      .set('Cookie', [`token=${token}`]);
+
+    // 2. Create a new order
+    await request(app)
+      .post('/api/v1/cart/items')
+      .set('Cookie', [`token=${token}`])
+      .send({ productId: validProductId, quantity: 100 });
+
+    const createRes = await request(app)
+      .post('/api/v1/orders')
+      .set('Cookie', [`token=${token}`])
+      .set('Idempotency-Key', `ik-${Date.now()}-${Math.random()}`)
+      .send({ shippingAddressId: global.testAddressId });
+    
+    if (!createRes.body.success) {
+      console.log('Order creation failed:', createRes.body);
+    }
+    
+    const newOrderId = createRes.body.data.id;
+
+    // 2. Transition it through valid states to SHIPPED
+    await request(app).patch(`/api/v1/orders/${newOrderId}/status`)
+      .set('Cookie', [`token=${adminToken}`]).send({ status: 'CONFIRMED' });
+    await request(app).patch(`/api/v1/orders/${newOrderId}/status`)
+      .set('Cookie', [`token=${adminToken}`]).send({ status: 'PROCESSING' });
+    await request(app).patch(`/api/v1/orders/${newOrderId}/status`)
+      .set('Cookie', [`token=${adminToken}`]).send({ status: 'READY_TO_SHIP' });
+    await request(app).patch(`/api/v1/orders/${newOrderId}/status`)
+      .set('Cookie', [`token=${adminToken}`]).send({ status: 'SHIPPED' });
+
+    // Record inventory before trying to cancel
+    const beforeProduct = await prisma.product.findUnique({
+      where: { id: validProductId },
+      include: { inventory: true }
+    });
+    const beforeAvailable = beforeProduct.inventory.availableQuantity;
+
+    // 3. Try to cancel it
+    const cancelRes = await request(app)
+      .patch(`/api/v1/orders/${newOrderId}/status`)
+      .set('Cookie', [`token=${token}`]) // Customer attempt
+      .send({ status: 'CANCELLED' });
+      
+    // Must be blocked because customer can't transition from SHIPPED
+    // Or because SHIPPED -> CANCELLED is illegal in domain logic
+    expect(cancelRes.statusCode).toBe(409);
+    
+    const adminCancelRes = await request(app)
+      .patch(`/api/v1/orders/${newOrderId}/status`)
+      .set('Cookie', [`token=${adminToken}`]) // Admin attempt
+      .send({ status: 'CANCELLED' });
+
+    // Also blocked for admin by domain logic
+    expect(adminCancelRes.statusCode).toBe(409);
+
+    // 4. Verify inventory was NOT restored
+    const afterProduct = await prisma.product.findUnique({
+      where: { id: validProductId },
+      include: { inventory: true }
+    });
+    
+    expect(afterProduct.inventory.availableQuantity).toBe(beforeAvailable);
   });
   it('should reject order if a product is inactive', async () => {
     // Make product inactive
