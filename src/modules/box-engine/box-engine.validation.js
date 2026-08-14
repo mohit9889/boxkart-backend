@@ -21,10 +21,13 @@ const recommendSchema = z.object({
     .object({
       priority: z
         .enum(['LOWEST_PRICE', 'BEST_FIT', 'BEST_PROTECTION', 'BALANCED'])
-        .default('BALANCED')
+        .default('BALANCED'),
+      ply: z.number().int().positive().optional(),
+      material: z.string().optional()
     })
     .optional()
-    .default({ priority: 'BALANCED' })
+    .default({ priority: 'BALANCED' }),
+  limit: z.number().int().min(1).max(50).optional().default(10)
 });
 
 module.exports = { recommendSchema };

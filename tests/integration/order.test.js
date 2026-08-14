@@ -47,7 +47,7 @@ describe('Order API', () => {
     adminToken = resAdminLogin.headers['set-cookie'][0].split(';')[0].split('=')[1];
 
     const box = await prisma.product.findFirst({
-      where: { sku: 'BOX-M-01' }
+      where: { sku: 'CB-8x6x4' }
     });
     
     await prisma.product.update({

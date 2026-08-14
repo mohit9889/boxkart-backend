@@ -10,11 +10,19 @@ describe('Box Engine & Pricing Regression', () => {
     expect(result.fits).toBe(false);
   });
 
-  it('should accurately fit an item exactly matching internal dimensions', () => {
+  it('should reject exact-fit with default min clearance (practical fit requires space)', () => {
     const boxDimensions = { length: 200, width: 200, height: 200, unit: 'MM' };
     const itemDimensions = { length: 200, width: 200, height: 200, unit: 'MM' };
     
     const result = calculateFit(itemDimensions, boxDimensions);
+    expect(result.fits).toBe(false);
+  });
+
+  it('should fit exact dimensions when min clearance is set to 0', () => {
+    const boxDimensions = { length: 200, width: 200, height: 200, unit: 'MM' };
+    const itemDimensions = { length: 200, width: 200, height: 200, unit: 'MM' };
+    
+    const result = calculateFit(itemDimensions, boxDimensions, 0);
     expect(result.fits).toBe(true);
     expect(result.utilization).toBe(1); // 100%
   });

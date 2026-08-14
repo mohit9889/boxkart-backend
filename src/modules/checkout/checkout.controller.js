@@ -33,7 +33,7 @@ const preview = async (req, res, next) => {
         items: pricedItems,
         summary: {
           subtotalMinor,
-          currency: 'USD'
+          currency: 'INR'
         }
       }
     });

@@ -7,12 +7,21 @@ const { requireAdmin } = require('../../middleware/auth');
 router.use(requireAdmin);
 
 // Categories
+router.get('/categories', adminController.getCategories);
 router.post('/categories', adminController.createCategory);
 router.patch('/categories/:id', adminController.updateCategory);
+router.delete('/categories/:id', adminController.deleteCategory);
 
 // Products
+router.get('/products', adminController.getProducts);
 router.post('/products', adminController.createProduct);
 router.patch('/products/:id', adminController.updateProduct);
+router.delete('/products/:id', adminController.deleteProduct);
+
+// Suppliers
+router.get('/suppliers', adminController.getSuppliers);
+router.post('/suppliers', adminController.createSupplier);
+router.patch('/suppliers/:id', adminController.updateSupplier);
 
 // Orders
 router.get('/orders', adminController.getOrders);

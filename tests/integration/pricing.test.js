@@ -8,7 +8,7 @@ describe('Pricing API Integration Tests', () => {
   beforeAll(async () => {
     // Find a product that has price tiers
     const box = await prisma.product.findFirst({
-      where: { sku: 'BOX-M-01' }
+      where: { sku: 'CB-8x6x4' }
     });
     
     // Ensure product is ACTIVE
@@ -35,8 +35,8 @@ describe('Pricing API Integration Tests', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.quantity).toBe(500);
-    expect(res.body.data.unitPriceMinor).toBe(1400); // From seed data
-    expect(res.body.data.subtotalMinor).toBe(700000);
+    expect(res.body.data.unitPriceMinor).toBe(950); // From seed: CB-8x6x4 at 500 qty
+    expect(res.body.data.subtotalMinor).toBe(475000);
     expect(res.body.data.currency).toBe('INR');
   });
 
@@ -66,7 +66,7 @@ describe('Pricing API Integration Tests', () => {
       
     expect(res.statusCode).toBe(200);
     // Verified authoritative database price wins
-    expect(res.body.data.unitPriceMinor).toBe(1400);
+    expect(res.body.data.unitPriceMinor).toBe(950);
     expect(res.body.data.currency).toBe('INR');
   });
 
@@ -96,6 +96,6 @@ describe('Pricing API Integration Tests', () => {
       
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.data.unitPriceMinor).toBe(1250); // From seed data for 1000+
+    expect(res.body.data.unitPriceMinor).toBe(790); // From seed: CB-8x6x4 at 5000 qty
   });
 });

@@ -30,10 +30,16 @@ enum ProductType {
   MAILER_BOX
   PAPER_MAILER
   BUBBLE_MAILER
+  COURIER_BAG
   TAPE
   STRETCH_FILM
+  BUBBLE_WRAP
+  FOAM
   VOID_FILL
   INSERT
+  STICKER
+  LABEL
+  CARD
   OTHER
 }
 enum ProductStatus {
@@ -183,6 +189,9 @@ model Category {
   name String
   slug String @unique
   description String?
+  longDescription String?
+  icon String?
+  color String?
   imageUrl String?
   status CategoryStatus @default(ACTIVE)
   sortOrder Int @default(0)
@@ -192,6 +201,19 @@ model Category {
   @@index([status])
   @@index([sortOrder])
   @@map("categories")
+}
+
+model Supplier {
+  id String @id @default(uuid()) @db.Uuid
+  name String
+  location String?
+  rating Decimal? @db.Decimal(3, 2)
+  leadTime String?
+  verified Boolean @default(false)
+  products Product[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("suppliers")
 }
 
 model Product {
@@ -210,6 +232,14 @@ model Product {
   moq Int @default(100)
   weight Decimal? @db.Decimal(10, 3)
   weightUnit WeightUnit @default(GRAM)
+  color String?
+  useCases String[] @default([])
+  deliveryEstimate String?
+  stockStatus String? @default("In Stock")
+  dimensions String?
+  notRecommendedFor String[] @default([])
+  supplierId String? @db.Uuid
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   boxSpecification BoxSpecification?
   images ProductImage[]
   priceTiers ProductPriceTier[]
@@ -224,6 +254,7 @@ model Product {
   @@index([status])
   @@index([productType])
   @@index([categoryId, status])
+  @@index([supplierId])
   @@map("products")
 }
 
@@ -261,6 +292,7 @@ model ProductImage {
   productId String @db.Uuid
   url String
   altText String?
+  imageType String @default("product")
   sortOrder Int @default(0)
   isPrimary Boolean @default(false)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)

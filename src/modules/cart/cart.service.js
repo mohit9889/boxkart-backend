@@ -65,7 +65,7 @@ const getCart = async (userId) => {
     items,
     summary: {
       subtotalMinor: cartSubtotalMinor,
-      currency: 'USD'
+      currency: 'INR'
     }
   };
 };

@@ -18,7 +18,7 @@ describe('Concurrency Testing', () => {
     
     global.concurrentUserEmail = userEmail;
 
-    const box = await prisma.product.findFirst({ where: { sku: 'BOX-M-01' } });
+    const box = await prisma.product.findFirst({ where: { sku: 'CB-8x6x4' } });
     await prisma.product.update({ where: { id: box.id }, data: { status: 'ACTIVE' } });
     productId = box.id;
   });
