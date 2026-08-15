@@ -577,3 +577,25 @@ model GuestInquiry {
   @@index([createdAt])
   @@map("guest_inquiries")
 }
+
+model Bundle {
+  id            String   @id @default(uuid()) @db.Uuid
+  slug          String   @unique
+  name          String
+  tagline       String?
+  description   String?
+  items         Json     @default("[]")
+  price         Int?
+  originalPrice Int?
+  savings       Int?
+  badge         String?
+  popular       Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+  @@map("bundles")
+}

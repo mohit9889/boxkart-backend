@@ -14,6 +14,7 @@ const orderRoutes = require('../modules/order/order.routes');
 const rfqRoutes = require('../modules/rfq/rfq.routes');
 const quoteRoutes = require('../modules/quotes/quotes.routes');
 const customPackagingRoutes = require('../modules/custom-packaging/custom-packaging.routes');
+const bundlesRoutes = require('../modules/bundles/bundles.routes');
 const adminRoutes = require('../modules/admin/admin.routes');
 
 const swaggerDocument = YAML.load(
@@ -31,6 +32,7 @@ router.use('/api/v1/orders', orderRoutes);
 router.use('/api/v1/rfq', rfqRoutes);
 router.use('/api/v1/quotes', quoteRoutes);
 router.use('/api/v1/custom-packaging', customPackagingRoutes);
+router.use('/api/v1/bundles', bundlesRoutes);
 router.use('/api/v1/admin', adminRoutes);
 
 const prisma = require('../infrastructure/database/prismaClient');
