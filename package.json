@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "start:prod": "node src/server.js",
-    "migrate:deploy": "npx prisma migrate deploy",
+    "migrate:deploy": "node scripts/migrate-deploy.js",
     "dev": "nodemon src/server.js",
     "test": "jest --runInBand",
     "seed": "node prisma/seed.js",
