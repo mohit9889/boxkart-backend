@@ -1,5 +1,6 @@
 const adminService = require('./admin.service');
 const validation = require('./admin.validation');
+const guestInquiryService = require('../custom-packaging/guest-inquiry.service');
 const AppError = require('../../utils/AppError');
 
 /** Standardized Zod error handler for controllers. */
@@ -175,6 +176,37 @@ const updateRfqStatus = async (req, res, next) => {
   }
 };
 
+/* ── Guest Inquiries ── */
+
+const getGuestInquiries = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, status } = req.query;
+    const result = await guestInquiryService.listGuestInquiries({ page, limit, status });
+    res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getGuestInquiry = async (req, res, next) => {
+  try {
+    const inquiry = await guestInquiryService.getGuestInquiryById(req.params.id);
+    res.json({ success: true, data: inquiry });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateGuestInquiryStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    const inquiry = await guestInquiryService.updateInquiryStatus(req.params.id, status);
+    res.json({ success: true, data: inquiry });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createCategory,
   updateCategory,
@@ -190,5 +222,9 @@ module.exports = {
   getOrders,
   updateOrderStatus,
   getRfqs,
-  updateRfqStatus
+  updateRfqStatus,
+  getGuestInquiries,
+  getGuestInquiry,
+  updateGuestInquiryStatus,
 };
+
