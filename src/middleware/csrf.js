@@ -18,6 +18,18 @@ const csrfProtection = (req, res, next) => {
     return next();
   }
 
+  // Allow trusted server-to-server calls (e.g. Next.js API routes acting as proxy).
+  // The secret must match the INTERNAL_API_SECRET env var and only be used
+  // from the trusted backend origin — never exposed to the browser.
+  const internalSecret = req.headers['x-internal-secret'];
+  if (
+    internalSecret &&
+    process.env.INTERNAL_API_SECRET &&
+    internalSecret === process.env.INTERNAL_API_SECRET
+  ) {
+    return next();
+  }
+
   const cookieToken = req.cookies['csrf_token'];
   const headerToken = req.headers['x-csrf-token'];
 
