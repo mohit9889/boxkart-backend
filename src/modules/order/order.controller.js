@@ -4,7 +4,7 @@ const AppError = require('../../utils/AppError');
 
 const createOrder = async (req, res, next) => {
   try {
-    const { shippingAddress, billingAddress } = createOrderSchema.parse(req.body);
+    const { shippingAddressId, shippingAddress, billingAddressId, billingAddress } = createOrderSchema.parse(req.body);
     const idempotencyKey = req.headers['idempotency-key'];
 
     if (!idempotencyKey || typeof idempotencyKey !== 'string' || idempotencyKey.length < 16 || idempotencyKey.length > 128) {
@@ -16,7 +16,9 @@ const createOrder = async (req, res, next) => {
 
     const order = await orderService.createOrder(
       req.user.id,
+      shippingAddressId,
       shippingAddress,
+      billingAddressId,
       billingAddress,
       idempotencyKey
     );

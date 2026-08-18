@@ -16,6 +16,7 @@ const quoteRoutes = require('../modules/quotes/quotes.routes');
 const customPackagingRoutes = require('../modules/custom-packaging/custom-packaging.routes');
 const bundlesRoutes = require('../modules/bundles/bundles.routes');
 const adminRoutes = require('../modules/admin/admin.routes');
+const addressRoutes = require('../modules/address/address.routes');
 
 const swaggerDocument = YAML.load(
   path.join(__dirname, '../api-spec/openapi.yaml')
@@ -34,6 +35,7 @@ router.use('/api/v1/quotes', quoteRoutes);
 router.use('/api/v1/custom-packaging', customPackagingRoutes);
 router.use('/api/v1/bundles', bundlesRoutes);
 router.use('/api/v1/admin', adminRoutes);
+router.use('/api/v1/addresses', addressRoutes);
 
 const prisma = require('../infrastructure/database/prismaClient');
 

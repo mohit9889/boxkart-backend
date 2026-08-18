@@ -4,7 +4,7 @@ const { validateTransition } = require('./order.domain');
 const AppError = require('../../utils/AppError');
 const crypto = require('crypto');
 
-const createOrder = async (userId, shippingAddressData, billingAddressData, idempotencyKey) => {
+const createOrder = async (userId, shippingAddressId, shippingAddressData, billingAddressId, billingAddressData, idempotencyKey) => {
   return await prisma.$transaction(async (tx) => {
     if (idempotencyKey) {
       const existingOrder = await tx.order.findUnique({
@@ -19,22 +19,35 @@ const createOrder = async (userId, shippingAddressData, billingAddressData, idem
       }
     }
 
-    const shippingAddress = await tx.address.create({
-      data: {
-        userId,
-        fullName: shippingAddressData.fullName,
-        phone: shippingAddressData.phone,
-        addressLine1: shippingAddressData.line1,
-        addressLine2: shippingAddressData.line2,
-        city: shippingAddressData.city,
-        state: shippingAddressData.state,
-        postalCode: shippingAddressData.pincode,
-        country: 'IN'
+    let shippingAddress;
+    if (shippingAddressId) {
+      shippingAddress = await tx.address.findUnique({ where: { id: shippingAddressId } });
+      if (!shippingAddress || shippingAddress.userId !== userId) {
+        throw new AppError('Invalid shipping address', { code: 'VALIDATION_ERROR', statusCode: 400 });
       }
-    });
+    } else {
+      shippingAddress = await tx.address.create({
+        data: {
+          userId,
+          fullName: shippingAddressData.fullName,
+          phone: shippingAddressData.phone,
+          addressLine1: shippingAddressData.line1,
+          addressLine2: shippingAddressData.line2,
+          city: shippingAddressData.city,
+          state: shippingAddressData.state,
+          postalCode: shippingAddressData.pincode,
+          country: 'IN'
+        }
+      });
+    }
     
     let billingAddress = shippingAddress;
-    if (billingAddressData) {
+    if (billingAddressId && billingAddressId !== shippingAddressId) {
+      billingAddress = await tx.address.findUnique({ where: { id: billingAddressId } });
+      if (!billingAddress || billingAddress.userId !== userId) {
+        throw new AppError('Invalid billing address', { code: 'VALIDATION_ERROR', statusCode: 400 });
+      }
+    } else if (billingAddressData) {
       billingAddress = await tx.address.create({
         data: {
           userId,
