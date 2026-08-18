@@ -10,7 +10,8 @@ const getCart = async (userId) => {
         include: {
           product: {
             include: {
-              images: { where: { isPrimary: true }, take: 1 }
+              images: { where: { isPrimary: true }, take: 1 },
+              priceTiers: true
             }
           }
         },

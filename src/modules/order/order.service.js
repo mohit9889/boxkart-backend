@@ -4,7 +4,7 @@ const { validateTransition } = require('./order.domain');
 const AppError = require('../../utils/AppError');
 const crypto = require('crypto');
 
-const createOrder = async (userId, shippingAddressId, billingAddressId, idempotencyKey) => {
+const createOrder = async (userId, shippingAddressData, billingAddressData, idempotencyKey) => {
   return await prisma.$transaction(async (tx) => {
     if (idempotencyKey) {
       const existingOrder = await tx.order.findUnique({
@@ -19,17 +19,35 @@ const createOrder = async (userId, shippingAddressId, billingAddressId, idempote
       }
     }
 
-    const shippingAddress = await tx.address.findUnique({ where: { id: shippingAddressId } });
-    if (!shippingAddress || shippingAddress.userId !== userId) {
-      throw new AppError('Invalid shipping address', { code: 'VALIDATION_ERROR', statusCode: 400 });
-    }
+    const shippingAddress = await tx.address.create({
+      data: {
+        userId,
+        fullName: shippingAddressData.fullName,
+        phone: shippingAddressData.phone,
+        addressLine1: shippingAddressData.line1,
+        addressLine2: shippingAddressData.line2,
+        city: shippingAddressData.city,
+        state: shippingAddressData.state,
+        postalCode: shippingAddressData.pincode,
+        country: 'IN'
+      }
+    });
     
     let billingAddress = shippingAddress;
-    if (billingAddressId && billingAddressId !== shippingAddressId) {
-      billingAddress = await tx.address.findUnique({ where: { id: billingAddressId } });
-      if (!billingAddress || billingAddress.userId !== userId) {
-        throw new AppError('Invalid billing address', { code: 'VALIDATION_ERROR', statusCode: 400 });
-      }
+    if (billingAddressData) {
+      billingAddress = await tx.address.create({
+        data: {
+          userId,
+          fullName: billingAddressData.fullName,
+          phone: billingAddressData.phone,
+          addressLine1: billingAddressData.line1,
+          addressLine2: billingAddressData.line2,
+          city: billingAddressData.city,
+          state: billingAddressData.state,
+          postalCode: billingAddressData.pincode,
+          country: 'IN'
+        }
+      });
     }
 
     const cart = await tx.cart.findUnique({

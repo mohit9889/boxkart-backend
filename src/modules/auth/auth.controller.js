@@ -55,6 +55,12 @@ const signup = async (req, res, next) => {
       throw error;
     }
 
+    const token = generateToken(user.id, user.role);
+    const refreshTokenRecord = await generateRefreshToken(user.id);
+
+    res.cookie('token', token, cookieOptions);
+    res.cookie('refreshToken', refreshTokenRecord.token, refreshCookieOptions);
+
     res.status(201).json({
       success: true,
       data: {
@@ -139,6 +145,11 @@ const login = async (req, res, next) => {
 
 const logout = (req, res) => {
   res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+  });
+  res.clearCookie('refreshToken', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
