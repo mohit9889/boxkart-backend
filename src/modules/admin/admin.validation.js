@@ -59,7 +59,9 @@ const priceTierSchema = z.object({
 const productImageSchema = z.object({
   url: z.string().url(),
   altText: z.string().optional(),
-  imageType: z.enum(['product', 'blueprint', 'lifestyle', 'detail']).default('product'),
+  imageType: z
+    .enum(['product', 'blueprint', 'lifestyle', 'detail'])
+    .default('product'),
   sortOrder: z.number().int().min(0).default(0),
   isPrimary: z.boolean().default(false)
 });
@@ -67,7 +69,9 @@ const productImageSchema = z.object({
 const inventorySchema = z.object({
   availableQuantity: z.number().int().min(0).default(0),
   reservedQuantity: z.number().int().min(0).default(0),
-  status: z.enum(['AVAILABLE', 'OUT_OF_STOCK', 'DISCONTINUED']).default('AVAILABLE')
+  status: z
+    .enum(['AVAILABLE', 'OUT_OF_STOCK', 'DISCONTINUED'])
+    .default('AVAILABLE')
 });
 
 const createProductSchema = z.object({
@@ -76,11 +80,25 @@ const createProductSchema = z.object({
   slug: z.string().min(2).max(200),
   shortDescription: z.string().max(500).optional(),
   description: z.string().max(2000).optional(),
-  status: z.enum(['DRAFT', 'ACTIVE', 'INACTIVE', 'DISCONTINUED']).default('DRAFT'),
+  status: z
+    .enum(['DRAFT', 'ACTIVE', 'INACTIVE', 'DISCONTINUED'])
+    .default('DRAFT'),
   productType: z.enum([
-    'CORRUGATED_BOX', 'MAILER_BOX', 'PAPER_MAILER', 'BUBBLE_MAILER',
-    'COURIER_BAG', 'TAPE', 'STRETCH_FILM', 'BUBBLE_WRAP', 'FOAM',
-    'VOID_FILL', 'INSERT', 'STICKER', 'LABEL', 'CARD', 'OTHER'
+    'CORRUGATED_BOX',
+    'MAILER_BOX',
+    'PAPER_MAILER',
+    'BUBBLE_MAILER',
+    'COURIER_BAG',
+    'TAPE',
+    'STRETCH_FILM',
+    'BUBBLE_WRAP',
+    'FOAM',
+    'VOID_FILL',
+    'INSERT',
+    'STICKER',
+    'LABEL',
+    'CARD',
+    'OTHER'
   ]),
   categoryId: z.string().uuid(),
   supplierId: z.string().uuid().optional().nullable(),
@@ -108,11 +126,25 @@ const updateProductSchema = z.object({
   shortDescription: z.string().max(500).optional(),
   description: z.string().max(2000).optional(),
   status: z.enum(['DRAFT', 'ACTIVE', 'INACTIVE', 'DISCONTINUED']).optional(),
-  productType: z.enum([
-    'CORRUGATED_BOX', 'MAILER_BOX', 'PAPER_MAILER', 'BUBBLE_MAILER',
-    'COURIER_BAG', 'TAPE', 'STRETCH_FILM', 'BUBBLE_WRAP', 'FOAM',
-    'VOID_FILL', 'INSERT', 'STICKER', 'LABEL', 'CARD', 'OTHER'
-  ]).optional(),
+  productType: z
+    .enum([
+      'CORRUGATED_BOX',
+      'MAILER_BOX',
+      'PAPER_MAILER',
+      'BUBBLE_MAILER',
+      'COURIER_BAG',
+      'TAPE',
+      'STRETCH_FILM',
+      'BUBBLE_WRAP',
+      'FOAM',
+      'VOID_FILL',
+      'INSERT',
+      'STICKER',
+      'LABEL',
+      'CARD',
+      'OTHER'
+    ])
+    .optional(),
   categoryId: z.string().uuid().optional(),
   supplierId: z.string().uuid().optional().nullable(),
   color: z.string().max(100).optional(),
@@ -136,15 +168,29 @@ const updateProductSchema = z.object({
 
 const updateOrderStatusSchema = z.object({
   status: z.enum([
-    'PENDING', 'CONFIRMED', 'PROCESSING', 'READY_TO_SHIP',
-    'SHIPPED', 'DELIVERED', 'CANCELLED', 'FAILED', 'REFUNDED'
+    'PENDING',
+    'CONFIRMED',
+    'PROCESSING',
+    'READY_TO_SHIP',
+    'SHIPPED',
+    'DELIVERED',
+    'CANCELLED',
+    'FAILED',
+    'REFUNDED'
   ])
 });
 
 const updateRfqStatusSchema = z.object({
   status: z.enum([
-    'DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'QUOTED',
-    'ACCEPTED', 'EXPIRED', 'REJECTED', 'CANCELLED', 'CONVERTED_TO_ORDER'
+    'DRAFT',
+    'SUBMITTED',
+    'UNDER_REVIEW',
+    'QUOTED',
+    'ACCEPTED',
+    'EXPIRED',
+    'REJECTED',
+    'CANCELLED',
+    'CONVERTED_TO_ORDER'
   ])
 });
 

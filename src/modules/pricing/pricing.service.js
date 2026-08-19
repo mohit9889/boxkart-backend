@@ -1,5 +1,8 @@
 const prisma = require('../../infrastructure/database/prismaClient');
-const { calculateSubtotal, selectApplicablePriceTier } = require('./pricing.domain');
+const {
+  calculateSubtotal,
+  selectApplicablePriceTier
+} = require('./pricing.domain');
 const AppError = require('../../utils/AppError');
 
 const calculatePriceForProduct = async (productId, quantity) => {
@@ -11,13 +14,22 @@ const calculatePriceForProduct = async (productId, quantity) => {
   });
 
   if (!product || product.status !== 'ACTIVE') {
-    throw new AppError('Product not found or inactive', { code: 'PRODUCT_NOT_FOUND', statusCode: 404 });
+    throw new AppError('Product not found or inactive', {
+      code: 'PRODUCT_NOT_FOUND',
+      statusCode: 404
+    });
   }
 
   try {
-    const matchingTier = selectApplicablePriceTier(quantity, product.priceTiers);
+    const matchingTier = selectApplicablePriceTier(
+      quantity,
+      product.priceTiers
+    );
     if (!matchingTier) {
-      throw new AppError('INVALID_QUANTITY', { code: 'INVALID_QUANTITY', statusCode: 400 });
+      throw new AppError('INVALID_QUANTITY', {
+        code: 'INVALID_QUANTITY',
+        statusCode: 400
+      });
     }
 
     const unitPriceMinor = matchingTier.unitPriceMinor;

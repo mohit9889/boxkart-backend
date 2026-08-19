@@ -17,6 +17,7 @@ const customPackagingRoutes = require('../modules/custom-packaging/custom-packag
 const bundlesRoutes = require('../modules/bundles/bundles.routes');
 const adminRoutes = require('../modules/admin/admin.routes');
 const addressRoutes = require('../modules/address/address.routes');
+const contactRoutes = require('../modules/contact/contact.routes');
 
 const swaggerDocument = YAML.load(
   path.join(__dirname, '../api-spec/openapi.yaml')
@@ -36,6 +37,7 @@ router.use('/api/v1/custom-packaging', customPackagingRoutes);
 router.use('/api/v1/bundles', bundlesRoutes);
 router.use('/api/v1/admin', adminRoutes);
 router.use('/api/v1/addresses', addressRoutes);
+router.use('/api/v1/contact', contactRoutes);
 
 const prisma = require('../infrastructure/database/prismaClient');
 
@@ -44,7 +46,9 @@ router.get('/health', (req, res) => {
 });
 
 router.get('/health/live', (req, res) => {
-  res.status(200).json({ status: 'alive', timestamp: new Date().toISOString() });
+  res
+    .status(200)
+    .json({ status: 'alive', timestamp: new Date().toISOString() });
 });
 
 router.get('/health/ready', async (req, res) => {

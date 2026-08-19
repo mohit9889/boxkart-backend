@@ -27,15 +27,15 @@ const createGuestInquiry = async (data) => {
       printing: data.printing || 'none',
       location: data.location || null,
       notes: data.notes || null,
-      status: 'NEW',
+      status: 'NEW'
     },
     select: {
       id: true,
       name: true,
       email: true,
       status: true,
-      createdAt: true,
-    },
+      createdAt: true
+    }
   });
 
   return inquiry;
@@ -68,9 +68,9 @@ const listGuestInquiries = async ({ page = 1, limit = 20, status } = {}) => {
         printing: true,
         location: true,
         status: true,
-        createdAt: true,
-      },
-    }),
+        createdAt: true
+      }
+    })
   ]);
 
   return {
@@ -79,8 +79,8 @@ const listGuestInquiries = async ({ page = 1, limit = 20, status } = {}) => {
       total,
       page: Number(page),
       limit: Number(limit),
-      totalPages: Math.ceil(total / limit),
-    },
+      totalPages: Math.ceil(total / limit)
+    }
   };
 };
 
@@ -92,7 +92,10 @@ const listGuestInquiries = async ({ page = 1, limit = 20, status } = {}) => {
 const getGuestInquiryById = async (id) => {
   const inquiry = await prisma.guestInquiry.findUnique({ where: { id } });
   if (!inquiry) {
-    throw new AppError('Inquiry not found', { code: 'NOT_FOUND', statusCode: 404 });
+    throw new AppError('Inquiry not found', {
+      code: 'NOT_FOUND',
+      statusCode: 404
+    });
   }
   return inquiry;
 };
@@ -106,15 +109,18 @@ const getGuestInquiryById = async (id) => {
 const updateInquiryStatus = async (id, status) => {
   const VALID_STATUSES = ['NEW', 'CONTACTED', 'CLOSED'];
   if (!VALID_STATUSES.includes(status)) {
-    throw new AppError(`Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`, {
-      code: 'VALIDATION_ERROR',
-      statusCode: 400,
-    });
+    throw new AppError(
+      `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
+      {
+        code: 'VALIDATION_ERROR',
+        statusCode: 400
+      }
+    );
   }
 
   const inquiry = await prisma.guestInquiry.update({
     where: { id },
-    data: { status },
+    data: { status }
   });
   return inquiry;
 };
@@ -123,5 +129,5 @@ module.exports = {
   createGuestInquiry,
   listGuestInquiries,
   getGuestInquiryById,
-  updateInquiryStatus,
+  updateInquiryStatus
 };

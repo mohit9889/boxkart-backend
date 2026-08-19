@@ -17,13 +17,15 @@ const addressSchema = z.object({
   type: z.enum(['SHIPPING', 'BILLING']).optional()
 });
 
-const createOrderSchema = z.object({
-  shippingAddressId: z.string().uuid().optional(),
-  shippingAddress: addressSchema.optional(),
-  billingAddressId: z.string().uuid().optional(),
-  billingAddress: addressSchema.optional()
-}).refine(data => data.shippingAddressId || data.shippingAddress, {
-  message: "Either shippingAddressId or shippingAddress must be provided",
-});
+const createOrderSchema = z
+  .object({
+    shippingAddressId: z.string().uuid().optional(),
+    shippingAddress: addressSchema.optional(),
+    billingAddressId: z.string().uuid().optional(),
+    billingAddress: addressSchema.optional()
+  })
+  .refine((data) => data.shippingAddressId || data.shippingAddress, {
+    message: 'Either shippingAddressId or shippingAddress must be provided'
+  });
 
 module.exports = { updateStatusSchema, createOrderSchema };

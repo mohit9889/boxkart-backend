@@ -32,7 +32,10 @@ const recommendBoxes = async (input) => {
 
   const recommendations = [];
   const normalizedInputWeight = inputProduct.weight
-    ? normalizeWeightToKG(inputProduct.weight, inputProduct.weightUnit || 'GRAM')
+    ? normalizeWeightToKG(
+        inputProduct.weight,
+        inputProduct.weightUnit || 'GRAM'
+      )
     : 0;
 
   // Collect prices for dynamic max calculation
@@ -43,7 +46,10 @@ const recommendBoxes = async (input) => {
 
     // Weight limit check
     if (normalizedInputWeight && spec.maxRecommendedWeight) {
-      const boxMaxWeightKG = normalizeWeightToKG(spec.maxRecommendedWeight, spec.weightUnit);
+      const boxMaxWeightKG = normalizeWeightToKG(
+        spec.maxRecommendedWeight,
+        spec.weightUnit
+      );
       if (normalizedInputWeight > boxMaxWeightKG) {
         continue;
       }
@@ -72,7 +78,10 @@ const recommendBoxes = async (input) => {
 
       if (candidate.priceTiers && candidate.priceTiers.length > 0) {
         const quantity = requirements.quantity || 1;
-        const applicableTier = selectApplicablePriceTier(quantity, candidate.priceTiers);
+        const applicableTier = selectApplicablePriceTier(
+          quantity,
+          candidate.priceTiers
+        );
         if (applicableTier) {
           basePrice = applicableTier.unitPriceMinor;
           currency = applicableTier.currency;
@@ -97,60 +106,62 @@ const recommendBoxes = async (input) => {
   const maxPriceInPool = allPrices.length > 0 ? Math.max(...allPrices) : null;
 
   // Score and format recommendations
-  const scored = recommendations.map(({ candidate, spec, fitResult, basePrice, currency }) => {
-    const inv = candidate.inventory;
+  const scored = recommendations.map(
+    ({ candidate, spec, fitResult, basePrice, currency }) => {
+      const inv = candidate.inventory;
 
-    const scoreData = calculateScore(
-      fitResult,
-      basePrice,
-      priority,
-      {
-        ply: spec.ply,
-        material: spec.material,
-        flute: spec.flute,
-        inventoryAvailable: inv?.availableQuantity || 0,
-        inventoryStatus: inv?.status || 'OUT_OF_STOCK'
-      },
-      maxPriceInPool
-    );
+      const scoreData = calculateScore(
+        fitResult,
+        basePrice,
+        priority,
+        {
+          ply: spec.ply,
+          material: spec.material,
+          flute: spec.flute,
+          inventoryAvailable: inv?.availableQuantity || 0,
+          inventoryStatus: inv?.status || 'OUT_OF_STOCK'
+        },
+        maxPriceInPool
+      );
 
-    // Fragile bonus/penalty: boost score for higher-ply boxes when fragile
-    let adjustedScore = scoreData.total;
-    if (requirements.fragile && spec.ply) {
-      if (spec.ply >= 5) adjustedScore += 5;
-      else if (spec.ply <= 3) adjustedScore -= 3;
-    }
-
-    const primaryImage = candidate.images?.[0];
-
-    return {
-      product: {
-        id: candidate.id,
-        name: candidate.name,
-        slug: candidate.slug,
-        sku: candidate.sku,
-        dimensions: candidate.dimensions,
-        color: candidate.color,
-        material: spec.material,
-        ply: spec.ply,
-        image: primaryImage?.url || null
-      },
-      fit: fitResult.fits,
-      orientation: fitResult.orientation,
-      clearance: fitResult.clearance,
-      utilization: Math.round(fitResult.utilization * 1000) / 1000,
-      score: Math.round(adjustedScore * 10) / 10,
-      scoreBreakdown: scoreData.breakdown,
-      pricing: {
-        unitPriceMinor: basePrice,
-        currency
-      },
-      inventory: {
-        status: inv?.status || 'UNKNOWN',
-        available: inv?.availableQuantity || 0
+      // Fragile bonus/penalty: boost score for higher-ply boxes when fragile
+      let adjustedScore = scoreData.total;
+      if (requirements.fragile && spec.ply) {
+        if (spec.ply >= 5) adjustedScore += 5;
+        else if (spec.ply <= 3) adjustedScore -= 3;
       }
-    };
-  });
+
+      const primaryImage = candidate.images?.[0];
+
+      return {
+        product: {
+          id: candidate.id,
+          name: candidate.name,
+          slug: candidate.slug,
+          sku: candidate.sku,
+          dimensions: candidate.dimensions,
+          color: candidate.color,
+          material: spec.material,
+          ply: spec.ply,
+          image: primaryImage?.url || null
+        },
+        fit: fitResult.fits,
+        orientation: fitResult.orientation,
+        clearance: fitResult.clearance,
+        utilization: Math.round(fitResult.utilization * 1000) / 1000,
+        score: Math.round(adjustedScore * 10) / 10,
+        scoreBreakdown: scoreData.breakdown,
+        pricing: {
+          unitPriceMinor: basePrice,
+          currency
+        },
+        inventory: {
+          status: inv?.status || 'UNKNOWN',
+          available: inv?.availableQuantity || 0
+        }
+      };
+    }
+  );
 
   scored.sort((a, b) => b.score - a.score);
 

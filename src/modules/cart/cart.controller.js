@@ -18,11 +18,13 @@ const addItem = async (req, res, next) => {
     res.status(200).json({ success: true, data: cart });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return next(new AppError('Validation failed', {
-        code: 'VALIDATION_ERROR',
-        statusCode: 400,
-        details: error.errors
-      }));
+      return next(
+        new AppError('Validation failed', {
+          code: 'VALIDATION_ERROR',
+          statusCode: 400,
+          details: error.errors
+        })
+      );
     }
     next(error);
   }
@@ -36,11 +38,13 @@ const updateItem = async (req, res, next) => {
     res.status(200).json({ success: true, data: cart });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return next(new AppError('Validation failed', {
-        code: 'VALIDATION_ERROR',
-        statusCode: 400,
-        details: error.errors
-      }));
+      return next(
+        new AppError('Validation failed', {
+          code: 'VALIDATION_ERROR',
+          statusCode: 400,
+          details: error.errors
+        })
+      );
     }
     next(error);
   }

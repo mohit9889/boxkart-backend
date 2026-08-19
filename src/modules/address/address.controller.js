@@ -1,5 +1,8 @@
 const addressService = require('./address.service');
-const { createAddressSchema, updateAddressSchema } = require('./address.validation');
+const {
+  createAddressSchema,
+  updateAddressSchema
+} = require('./address.validation');
 const AppError = require('../../utils/AppError');
 
 const getAddresses = async (req, res, next) => {
@@ -14,15 +17,20 @@ const getAddresses = async (req, res, next) => {
 const createAddress = async (req, res, next) => {
   try {
     const validatedData = createAddressSchema.parse(req.body);
-    const address = await addressService.createAddress(req.user.id, validatedData);
+    const address = await addressService.createAddress(
+      req.user.id,
+      validatedData
+    );
     res.status(201).json({ status: 'success', data: { address } });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return next(new AppError('Validation failed', {
-        code: 'VALIDATION_ERROR',
-        statusCode: 400,
-        details: error.errors
-      }));
+      return next(
+        new AppError('Validation failed', {
+          code: 'VALIDATION_ERROR',
+          statusCode: 400,
+          details: error.errors
+        })
+      );
     }
     next(error);
   }
@@ -46,11 +54,13 @@ const updateAddress = async (req, res, next) => {
     res.status(200).json({ status: 'success' });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return next(new AppError('Validation failed', {
-        code: 'VALIDATION_ERROR',
-        statusCode: 400,
-        details: error.errors
-      }));
+      return next(
+        new AppError('Validation failed', {
+          code: 'VALIDATION_ERROR',
+          statusCode: 400,
+          details: error.errors
+        })
+      );
     }
     next(error);
   }

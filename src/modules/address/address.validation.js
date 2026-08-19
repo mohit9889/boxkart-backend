@@ -11,7 +11,7 @@ const createAddressSchema = z.object({
   state: z.string().min(1, 'State is required'),
   postalCode: z.string().min(6, 'Valid pincode is required'),
   country: z.string().optional().default('IN'),
-  isDefault: z.boolean().optional().default(false),
+  isDefault: z.boolean().optional().default(false)
 });
 
 const updateAddressSchema = createAddressSchema.partial();

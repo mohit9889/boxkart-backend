@@ -1,8 +1,14 @@
 const winston = require('winston');
 
 const redactSensitive = winston.format((info) => {
-  const sensitiveKeys = ['password', 'token', 'creditCard', 'authorization', 'cookie'];
-  
+  const sensitiveKeys = [
+    'password',
+    'token',
+    'creditCard',
+    'authorization',
+    'cookie'
+  ];
+
   const redact = (obj) => {
     if (typeof obj !== 'object' || obj === null) return;
     for (const key of Object.keys(obj)) {

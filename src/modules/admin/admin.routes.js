@@ -34,6 +34,9 @@ router.patch('/rfqs/:id/status', adminController.updateRfqStatus);
 // Guest Inquiries (from the custom packaging form)
 router.get('/guest-inquiries', adminController.getGuestInquiries);
 router.get('/guest-inquiries/:id', adminController.getGuestInquiry);
-router.patch('/guest-inquiries/:id/status', adminController.updateGuestInquiryStatus);
+router.patch(
+  '/guest-inquiries/:id/status',
+  adminController.updateGuestInquiryStatus
+);
 
 module.exports = router;

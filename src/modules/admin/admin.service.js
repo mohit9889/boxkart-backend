@@ -5,7 +5,10 @@ const AppError = require('../../utils/AppError');
 const handleP2002 = (error, resource) => {
   if (error.code === 'P2002') {
     const field = error.meta?.target?.[0] || 'Field';
-    throw new AppError(`${resource} with this ${field} already exists.`, { code: 'CONFLICT', statusCode: 409 });
+    throw new AppError(`${resource} with this ${field} already exists.`, {
+      code: 'CONFLICT',
+      statusCode: 409
+    });
   }
   throw error;
 };
@@ -84,13 +87,8 @@ const getSuppliers = async () => {
  * Images, and Inventory in a single transaction.
  */
 const createProduct = async (data) => {
-  const {
-    boxSpecification,
-    priceTiers,
-    images,
-    inventory,
-    ...productData
-  } = data;
+  const { boxSpecification, priceTiers, images, inventory, ...productData } =
+    data;
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -133,13 +131,8 @@ const createProduct = async (data) => {
  * For priceTiers, images — performs delete-all-then-recreate.
  */
 const updateProduct = async (id, data) => {
-  const {
-    boxSpecification,
-    priceTiers,
-    images,
-    inventory,
-    ...productData
-  } = data;
+  const { boxSpecification, priceTiers, images, inventory, ...productData } =
+    data;
 
   try {
     return await prisma.$transaction(async (tx) => {

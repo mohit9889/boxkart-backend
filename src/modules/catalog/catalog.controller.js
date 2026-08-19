@@ -41,7 +41,12 @@ const getCategoryBySlug = async (req, res, next) => {
     });
 
     if (!category || category.status !== 'ACTIVE') {
-      return next(new AppError('Category not found', { code: 'CATEGORY_NOT_FOUND', statusCode: 404 }));
+      return next(
+        new AppError('Category not found', {
+          code: 'CATEGORY_NOT_FOUND',
+          statusCode: 404
+        })
+      );
     }
 
     res.status(200).json({
@@ -185,11 +190,13 @@ const getProducts = async (req, res, next) => {
     });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return next(new AppError('Validation failed', {
-        code: 'VALIDATION_ERROR',
-        statusCode: 400,
-        details: error.errors
-      }));
+      return next(
+        new AppError('Validation failed', {
+          code: 'VALIDATION_ERROR',
+          statusCode: 400,
+          details: error.errors
+        })
+      );
     }
     next(error);
   }
@@ -214,7 +221,12 @@ const getProductBySlug = async (req, res, next) => {
     });
 
     if (!product || product.status !== 'ACTIVE') {
-      return next(new AppError('Product not found', { code: 'PRODUCT_NOT_FOUND', statusCode: 404 }));
+      return next(
+        new AppError('Product not found', {
+          code: 'PRODUCT_NOT_FOUND',
+          statusCode: 404
+        })
+      );
     }
 
     res.status(200).json({ success: true, data: product });
@@ -244,10 +256,14 @@ function getLowestTierPrice(product) {
 /** Convert dimension to inches for size filtering. */
 function toInches(value, unit) {
   switch (unit) {
-    case 'MM': return value / 25.4;
-    case 'CM': return value / 2.54;
-    case 'INCH': return value;
-    default: return value;
+    case 'MM':
+      return value / 25.4;
+    case 'CM':
+      return value / 2.54;
+    case 'INCH':
+      return value;
+    default:
+      return value;
   }
 }
 

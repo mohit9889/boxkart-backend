@@ -6,11 +6,13 @@ const AppError = require('../../utils/AppError');
 /** Standardized Zod error handler for controllers. */
 const handleZodError = (error, next) => {
   if (error.name === 'ZodError') {
-    return next(new AppError('Validation failed', {
-      code: 'VALIDATION_ERROR',
-      statusCode: 400,
-      details: error.errors
-    }));
+    return next(
+      new AppError('Validation failed', {
+        code: 'VALIDATION_ERROR',
+        statusCode: 400,
+        details: error.errors
+      })
+    );
   }
   next(error);
 };
@@ -51,7 +53,13 @@ const getCategories = async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 50;
     const result = await adminService.getCategories(page, limit);
-    res.status(200).json({ success: true, data: result.categories, meta: result.pagination });
+    res
+      .status(200)
+      .json({
+        success: true,
+        data: result.categories,
+        meta: result.pagination
+      });
   } catch (error) {
     next(error);
   }
@@ -124,7 +132,9 @@ const getProducts = async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
     const result = await adminService.getProducts(page, limit);
-    res.status(200).json({ success: true, data: result.products, meta: result.pagination });
+    res
+      .status(200)
+      .json({ success: true, data: result.products, meta: result.pagination });
   } catch (error) {
     next(error);
   }
@@ -137,7 +147,9 @@ const getOrders = async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
     const result = await adminService.getOrders(page, limit);
-    res.status(200).json({ success: true, data: result.orders, meta: result.pagination });
+    res
+      .status(200)
+      .json({ success: true, data: result.orders, meta: result.pagination });
   } catch (error) {
     next(error);
   }
@@ -160,7 +172,9 @@ const getRfqs = async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
     const result = await adminService.getRfqs(page, limit);
-    res.status(200).json({ success: true, data: result.rfqs, meta: result.pagination });
+    res
+      .status(200)
+      .json({ success: true, data: result.rfqs, meta: result.pagination });
   } catch (error) {
     next(error);
   }
@@ -181,7 +195,11 @@ const updateRfqStatus = async (req, res, next) => {
 const getGuestInquiries = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, status } = req.query;
-    const result = await guestInquiryService.listGuestInquiries({ page, limit, status });
+    const result = await guestInquiryService.listGuestInquiries({
+      page,
+      limit,
+      status
+    });
     res.json({ success: true, ...result });
   } catch (error) {
     next(error);
@@ -190,7 +208,9 @@ const getGuestInquiries = async (req, res, next) => {
 
 const getGuestInquiry = async (req, res, next) => {
   try {
-    const inquiry = await guestInquiryService.getGuestInquiryById(req.params.id);
+    const inquiry = await guestInquiryService.getGuestInquiryById(
+      req.params.id
+    );
     res.json({ success: true, data: inquiry });
   } catch (error) {
     next(error);
@@ -200,7 +220,10 @@ const getGuestInquiry = async (req, res, next) => {
 const updateGuestInquiryStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
-    const inquiry = await guestInquiryService.updateInquiryStatus(req.params.id, status);
+    const inquiry = await guestInquiryService.updateInquiryStatus(
+      req.params.id,
+      status
+    );
     res.json({ success: true, data: inquiry });
   } catch (error) {
     next(error);
@@ -225,6 +248,5 @@ module.exports = {
   updateRfqStatus,
   getGuestInquiries,
   getGuestInquiry,
-  updateGuestInquiryStatus,
+  updateGuestInquiryStatus
 };
-

@@ -24,5 +24,14 @@ router.post('/login', authLimiter, authController.login);
 router.post('/refresh', authLimiter, authController.refresh);
 router.post('/logout', authController.logout);
 router.get('/me', requireAuth, authController.me);
+router.put('/profile', requireAuth, authController.updateProfile);
+router.post('/forgot-password', authLimiter, authController.forgotPassword);
+router.post('/reset-password', authLimiter, authController.resetPassword);
+router.post(
+  '/update-password',
+  authLimiter,
+  requireAuth,
+  authController.updatePassword
+);
 
 module.exports = router;

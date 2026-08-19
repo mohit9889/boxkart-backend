@@ -17,14 +17,16 @@ const cleanupAbandonedAttachments = async () => {
 
     for (const rfq of abandonedRfqs) {
       if (rfq.attachments && rfq.attachments.length > 0) {
-        const filePaths = rfq.attachments.map(att => att.fileUrl);
+        const filePaths = rfq.attachments.map((att) => att.fileUrl);
         await supabase.storage.from('rfq-attachments').remove(filePaths);
-        
+
         await prisma.rFQAttachment.deleteMany({
           where: { rfqId: rfq.id }
         });
-        
-        logger.info(`Cleaned up ${filePaths.length} attachments for abandoned RFQ ${rfq.id}`);
+
+        logger.info(
+          `Cleaned up ${filePaths.length} attachments for abandoned RFQ ${rfq.id}`
+        );
       }
     }
   } catch (error) {

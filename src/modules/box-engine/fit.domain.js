@@ -8,10 +8,34 @@
  * Each set of weights sums to 1.0.
  */
 const PRIORITY_WEIGHTS = {
-  BALANCED: { fit: 0.4, space: 0.25, protection: 0.2, price: 0.1, availability: 0.05 },
-  LOWEST_PRICE: { fit: 0.15, space: 0.15, protection: 0.15, price: 0.5, availability: 0.05 },
-  BEST_FIT: { fit: 0.45, space: 0.3, protection: 0.1, price: 0.1, availability: 0.05 },
-  BEST_PROTECTION: { fit: 0.2, space: 0.1, protection: 0.45, price: 0.1, availability: 0.15 }
+  BALANCED: {
+    fit: 0.4,
+    space: 0.25,
+    protection: 0.2,
+    price: 0.1,
+    availability: 0.05
+  },
+  LOWEST_PRICE: {
+    fit: 0.15,
+    space: 0.15,
+    protection: 0.15,
+    price: 0.5,
+    availability: 0.05
+  },
+  BEST_FIT: {
+    fit: 0.45,
+    space: 0.3,
+    protection: 0.1,
+    price: 0.1,
+    availability: 0.05
+  },
+  BEST_PROTECTION: {
+    fit: 0.2,
+    space: 0.1,
+    protection: 0.45,
+    price: 0.1,
+    availability: 0.15
+  }
 };
 
 /** Default minimum clearance per dimension (mm) to ensure practical fit. */
@@ -28,10 +52,14 @@ const normalizeToMM = (val, unit) => {
   }
   const upperUnit = unit.toUpperCase();
   switch (upperUnit) {
-    case 'INCH': return value * 25.4;
-    case 'CM': return value * 10;
-    case 'MM': return value;
-    default: throw new Error(`Unsupported unit: ${unit}`);
+    case 'INCH':
+      return value * 25.4;
+    case 'CM':
+      return value * 10;
+    case 'MM':
+      return value;
+    default:
+      throw new Error(`Unsupported unit: ${unit}`);
   }
 };
 
@@ -47,11 +75,16 @@ const normalizeWeightToKG = (val, unit) => {
   }
   const upperUnit = unit.toUpperCase();
   switch (upperUnit) {
-    case 'LB': return value * 0.453592;
-    case 'GRAM': return value / 1000;
-    case 'KG': return value;
-    case 'OZ': return value * 0.0283495;
-    default: throw new Error(`Unsupported weight unit: ${unit}`);
+    case 'LB':
+      return value * 0.453592;
+    case 'GRAM':
+      return value / 1000;
+    case 'KG':
+      return value;
+    case 'OZ':
+      return value * 0.0283495;
+    default:
+      throw new Error(`Unsupported weight unit: ${unit}`);
   }
 };
 
@@ -78,7 +111,11 @@ const getPermutations = (l, w, h) => {
  * @param {number} [minClearanceMM=5] - minimum clearance per dimension in mm
  * @returns {Object} fit result
  */
-const calculateFit = (product, box, minClearanceMM = DEFAULT_MIN_CLEARANCE_MM) => {
+const calculateFit = (
+  product,
+  box,
+  minClearanceMM = DEFAULT_MIN_CLEARANCE_MM
+) => {
   const pL = normalizeToMM(product.length, product.unit);
   const pW = normalizeToMM(product.width, product.unit);
   const pH = normalizeToMM(product.height, product.unit);
@@ -104,7 +141,11 @@ const calculateFit = (product, box, minClearanceMM = DEFAULT_MIN_CLEARANCE_MM) =
     const clearanceH = bH - perm.h;
 
     // Must fit AND have minimum clearance on each dimension
-    if (clearanceL >= minClearanceMM && clearanceW >= minClearanceMM && clearanceH >= minClearanceMM) {
+    if (
+      clearanceL >= minClearanceMM &&
+      clearanceW >= minClearanceMM &&
+      clearanceH >= minClearanceMM
+    ) {
       const totalClearance = clearanceL + clearanceW + clearanceH;
 
       if (!bestFit || totalClearance < bestFit.totalClearance) {
@@ -120,7 +161,10 @@ const calculateFit = (product, box, minClearanceMM = DEFAULT_MIN_CLEARANCE_MM) =
   }
 
   if (!bestFit) {
-    return { fits: false, reason: 'No orientation provides sufficient clearance' };
+    return {
+      fits: false,
+      reason: 'No orientation provides sufficient clearance'
+    };
   }
 
   return bestFit;
@@ -144,14 +188,16 @@ const calculateProtectionScore = (spec, clearance) => {
 
   // Clearance for cushioning (more clearance = more room for padding)
   const avgClearance = (clearance.l + clearance.w + clearance.h) / 3;
-  if (avgClearance >= 30) score += 15; // 30mm+ average cushion
+  if (avgClearance >= 30)
+    score += 15; // 30mm+ average cushion
   else if (avgClearance >= 15) score += 10;
   else if (avgClearance >= 8) score += 5;
 
   // Flute type contribution
   if (spec.flute) {
     const flute = spec.flute.toUpperCase();
-    if (flute.includes('BC') || flute.includes('AB')) score += 10; // Double wall
+    if (flute.includes('BC') || flute.includes('AB'))
+      score += 10; // Double wall
     else if (flute.includes('B') || flute.includes('C')) score += 5;
   }
 
@@ -168,7 +214,13 @@ const calculateProtectionScore = (spec, clearance) => {
  * @param {number|null} [maxPriceInPool] - max unit price among candidates (for dynamic normalization)
  * @returns {Object} { total, breakdown }
  */
-const calculateScore = (fitResult, basePrice, priority = 'BALANCED', extras = {}, maxPriceInPool = null) => {
+const calculateScore = (
+  fitResult,
+  basePrice,
+  priority = 'BALANCED',
+  extras = {},
+  maxPriceInPool = null
+) => {
   if (!fitResult.fits) return { total: 0, breakdown: {} };
 
   const weights = PRIORITY_WEIGHTS[priority] || PRIORITY_WEIGHTS.BALANCED;
@@ -184,7 +236,8 @@ const calculateScore = (fitResult, basePrice, priority = 'BALANCED', extras = {}
     fitResult.orientation.h
   );
   const maxClearance = Math.max(productMaxDim * 2, 200); // Dynamic cap, min 200mm
-  let fitScore = ((maxClearance - fitResult.totalClearance) / maxClearance) * 100;
+  let fitScore =
+    ((maxClearance - fitResult.totalClearance) / maxClearance) * 100;
   if (fitScore < 0) fitScore = 0;
 
   // Price score (0-100) — lower price is better, dynamic normalization

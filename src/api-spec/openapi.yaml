@@ -903,7 +903,7 @@ paths:
                         type: string
                       details:
                         type: object
-  /rfqs:
+  /rfq:
     post:
       tags:
         - RFQ
@@ -920,7 +920,7 @@ paths:
       responses:
         '200':
           description: List of RFQs
-  /rfqs/{id}:
+  /rfq/{id}:
     get:
       tags:
         - RFQ
@@ -935,7 +935,37 @@ paths:
       responses:
         '200':
           description: RFQ details
-  /rfqs/{id}/submit:
+  /rfq/{id}/items:
+    post:
+      tags:
+        - RFQ
+      summary: Add an item to RFQ
+      description: Add a product item to an existing RFQ.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productId:
+                  type: string
+                  format: uuid
+                quantity:
+                  type: integer
+                notes:
+                  type: string
+      responses:
+        '201':
+          description: Item added successfully
+  /rfq/{id}/submit:
     post:
       tags:
         - RFQ
@@ -951,7 +981,7 @@ paths:
       responses:
         '200':
           description: RFQ submitted successfully
-  /rfqs/{id}/cancel:
+  /rfq/{id}/cancel:
     post:
       tags:
         - RFQ

@@ -8,10 +8,18 @@ const AppError = require('../../utils/AppError');
 const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (req, file, cb) => {
-    if (['image/jpeg', 'image/png', 'application/pdf'].includes(file.mimetype)) {
+    if (
+      ['image/jpeg', 'image/png', 'application/pdf'].includes(file.mimetype)
+    ) {
       cb(null, true);
     } else {
-      cb(new AppError('Invalid file type. Only JPEG, PNG, and PDF are allowed.', { code: 'UNSUPPORTED_MEDIA_TYPE', statusCode: 415 }), false);
+      cb(
+        new AppError(
+          'Invalid file type. Only JPEG, PNG, and PDF are allowed.',
+          { code: 'UNSUPPORTED_MEDIA_TYPE', statusCode: 415 }
+        ),
+        false
+      );
     }
   }
 });

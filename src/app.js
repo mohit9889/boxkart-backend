@@ -27,10 +27,7 @@ app.use((req, res, next) => {
 });
 
 // CORS Configuration
-const allowedOrigins = [
-  env.FRONTEND_URL,
-  env.DEV_FRONTEND_URL
-].filter(Boolean);
+const allowedOrigins = [env.FRONTEND_URL, env.DEV_FRONTEND_URL].filter(Boolean);
 
 app.use(
   cors({
@@ -125,7 +122,9 @@ app.use((err, req, res, next) => {
       error: {
         code: err.code,
         message: err.message,
-        ...(Object.keys(err.details || {}).length > 0 && { details: err.details })
+        ...(Object.keys(err.details || {}).length > 0 && {
+          details: err.details
+        })
       }
     });
   }

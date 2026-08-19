@@ -16,9 +16,11 @@ const guestInquirySchema = z.object({
   height: z.coerce.number().positive().optional(),
   unit: z.enum(['INCH', 'CM']).default('INCH'),
   quantity: z.coerce.number().int().positive('Quantity is required'),
-  printing: z.enum(['none', '1-color', '2-color', 'full-color']).default('none'),
+  printing: z
+    .enum(['none', '1-color', '2-color', 'full-color'])
+    .default('none'),
   location: z.string().optional(),
-  notes: z.string().optional(),
+  notes: z.string().optional()
 });
 
 /**
@@ -35,11 +37,13 @@ const createGuestInquiry = async (req, res, next) => {
     res.status(201).json({ success: true, data: inquiry });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return next(new AppError('Validation failed', {
-        code: 'VALIDATION_ERROR',
-        statusCode: 400,
-        details: error.errors,
-      }));
+      return next(
+        new AppError('Validation failed', {
+          code: 'VALIDATION_ERROR',
+          statusCode: 400,
+          details: error.errors
+        })
+      );
     }
     next(error);
   }
@@ -65,11 +69,13 @@ const createCustomPackagingRequest = async (req, res, next) => {
     res.status(201).json({ success: true, data: { rfq, item } });
   } catch (error) {
     if (error.name === 'ZodError') {
-      return next(new AppError('Validation failed', {
-        code: 'VALIDATION_ERROR',
-        statusCode: 400,
-        details: error.errors
-      }));
+      return next(
+        new AppError('Validation failed', {
+          code: 'VALIDATION_ERROR',
+          statusCode: 400,
+          details: error.errors
+        })
+      );
     }
     next(error);
   }
@@ -77,5 +83,5 @@ const createCustomPackagingRequest = async (req, res, next) => {
 
 module.exports = {
   createGuestInquiry,
-  createCustomPackagingRequest,
+  createCustomPackagingRequest
 };

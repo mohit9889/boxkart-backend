@@ -32,4 +32,36 @@ const verifyToken = (token) => {
   }
 };
 
-module.exports = { generateToken, verifyToken, generateRefreshToken };
+const generatePasswordResetToken = async (userId) => {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + 1); // Valid for 1 hour
+
+  return await prisma.passwordResetToken.create({
+    data: {
+      token,
+      userId,
+      expiresAt
+    }
+  });
+};
+
+const verifyPasswordResetToken = async (token) => {
+  const resetToken = await prisma.passwordResetToken.findUnique({
+    where: { token }
+  });
+
+  if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
+    return null;
+  }
+
+  return resetToken;
+};
+
+module.exports = {
+  generateToken,
+  verifyToken,
+  generateRefreshToken,
+  generatePasswordResetToken,
+  verifyPasswordResetToken
+};

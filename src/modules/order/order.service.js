@@ -1,10 +1,20 @@
 const prisma = require('../../infrastructure/database/prismaClient');
-const { selectApplicablePriceTier, calculateSubtotal } = require('../pricing/pricing.domain');
+const {
+  selectApplicablePriceTier,
+  calculateSubtotal
+} = require('../pricing/pricing.domain');
 const { validateTransition } = require('./order.domain');
 const AppError = require('../../utils/AppError');
 const crypto = require('crypto');
 
-const createOrder = async (userId, shippingAddressId, shippingAddressData, billingAddressId, billingAddressData, idempotencyKey) => {
+const createOrder = async (
+  userId,
+  shippingAddressId,
+  shippingAddressData,
+  billingAddressId,
+  billingAddressData,
+  idempotencyKey
+) => {
   return await prisma.$transaction(async (tx) => {
     if (idempotencyKey) {
       const existingOrder = await tx.order.findUnique({
@@ -13,7 +23,10 @@ const createOrder = async (userId, shippingAddressId, shippingAddressData, billi
       });
       if (existingOrder) {
         if (existingOrder.userId !== userId) {
-          throw new AppError('Idempotency key already in use', { code: 'IDEMPOTENCY_CONFLICT', statusCode: 409 });
+          throw new AppError('Idempotency key already in use', {
+            code: 'IDEMPOTENCY_CONFLICT',
+            statusCode: 409
+          });
         }
         return existingOrder;
       }
@@ -21,9 +34,14 @@ const createOrder = async (userId, shippingAddressId, shippingAddressData, billi
 
     let shippingAddress;
     if (shippingAddressId) {
-      shippingAddress = await tx.address.findUnique({ where: { id: shippingAddressId } });
+      shippingAddress = await tx.address.findUnique({
+        where: { id: shippingAddressId }
+      });
       if (!shippingAddress || shippingAddress.userId !== userId) {
-        throw new AppError('Invalid shipping address', { code: 'VALIDATION_ERROR', statusCode: 400 });
+        throw new AppError('Invalid shipping address', {
+          code: 'VALIDATION_ERROR',
+          statusCode: 400
+        });
       }
     } else {
       shippingAddress = await tx.address.create({
@@ -40,12 +58,17 @@ const createOrder = async (userId, shippingAddressId, shippingAddressData, billi
         }
       });
     }
-    
+
     let billingAddress = shippingAddress;
     if (billingAddressId && billingAddressId !== shippingAddressId) {
-      billingAddress = await tx.address.findUnique({ where: { id: billingAddressId } });
+      billingAddress = await tx.address.findUnique({
+        where: { id: billingAddressId }
+      });
       if (!billingAddress || billingAddress.userId !== userId) {
-        throw new AppError('Invalid billing address', { code: 'VALIDATION_ERROR', statusCode: 400 });
+        throw new AppError('Invalid billing address', {
+          code: 'VALIDATION_ERROR',
+          statusCode: 400
+        });
       }
     } else if (billingAddressData) {
       billingAddress = await tx.address.create({
@@ -69,7 +92,10 @@ const createOrder = async (userId, shippingAddressId, shippingAddressData, billi
     });
 
     if (!cart || cart.items.length === 0) {
-      throw new AppError('Cart is empty', { code: 'VALIDATION_ERROR', statusCode: 400 });
+      throw new AppError('Cart is empty', {
+        code: 'VALIDATION_ERROR',
+        statusCode: 400
+      });
     }
 
     let subtotalMinor = 0;
@@ -82,16 +108,28 @@ const createOrder = async (userId, shippingAddressId, shippingAddressData, billi
       });
 
       if (!product || product.status !== 'ACTIVE') {
-        throw new AppError(`Product ${item.product.sku} is not active`, { code: 'PRODUCT_INACTIVE', statusCode: 400 });
+        throw new AppError(`Product ${item.product.sku} is not active`, {
+          code: 'PRODUCT_INACTIVE',
+          statusCode: 400
+        });
       }
 
-      const matchingTier = selectApplicablePriceTier(item.quantity, product.priceTiers);
+      const matchingTier = selectApplicablePriceTier(
+        item.quantity,
+        product.priceTiers
+      );
       if (!matchingTier) {
-        throw new AppError(`Minimum order quantity not met for ${product.sku}`, { code: 'BELOW_MOQ', statusCode: 400 });
+        throw new AppError(
+          `Minimum order quantity not met for ${product.sku}`,
+          { code: 'BELOW_MOQ', statusCode: 400 }
+        );
       }
 
       if (!product.inventory) {
-        throw new AppError(`Insufficient stock for ${product.sku}`, { code: 'INSUFFICIENT_INVENTORY', statusCode: 409 });
+        throw new AppError(`Insufficient stock for ${product.sku}`, {
+          code: 'INSUFFICIENT_INVENTORY',
+          statusCode: 409
+        });
       }
 
       const updateResult = await tx.inventory.updateMany({
@@ -108,11 +146,17 @@ const createOrder = async (userId, shippingAddressId, shippingAddressData, billi
       });
 
       if (updateResult.count !== 1) {
-        throw new AppError(`Insufficient stock for ${product.sku}`, { code: 'INSUFFICIENT_INVENTORY', statusCode: 409 });
+        throw new AppError(`Insufficient stock for ${product.sku}`, {
+          code: 'INSUFFICIENT_INVENTORY',
+          statusCode: 409
+        });
       }
 
       const unitPriceMinor = matchingTier.unitPriceMinor;
-      const itemSubtotalMinor = calculateSubtotal(unitPriceMinor, item.quantity);
+      const itemSubtotalMinor = calculateSubtotal(
+        unitPriceMinor,
+        item.quantity
+      );
 
       subtotalMinor += itemSubtotalMinor;
 
@@ -162,8 +206,14 @@ const createOrder = async (userId, shippingAddressId, shippingAddressData, billi
         }
       });
     } catch (error) {
-      if (error.code === 'P2002' && error.meta?.target?.includes('idempotencyKey')) {
-        throw new AppError('Idempotency key already in use', { code: 'IDEMPOTENCY_CONFLICT', statusCode: 409 });
+      if (
+        error.code === 'P2002' &&
+        error.meta?.target?.includes('idempotencyKey')
+      ) {
+        throw new AppError('Idempotency key already in use', {
+          code: 'IDEMPOTENCY_CONFLICT',
+          statusCode: 409
+        });
       }
       throw error;
     }
@@ -188,7 +238,7 @@ const getUserOrders = async (userId, page = 1, limit = 20) => {
     }),
     prisma.order.count({ where: { userId } })
   ]);
-  
+
   return {
     data: orders,
     meta: {
@@ -210,13 +260,21 @@ const getOrderById = async (userId, orderId) => {
   });
 
   if (!order || order.userId !== userId) {
-    throw new AppError('Order not found', { code: 'ORDER_NOT_FOUND', statusCode: 404 });
+    throw new AppError('Order not found', {
+      code: 'ORDER_NOT_FOUND',
+      statusCode: 404
+    });
   }
 
   return order;
 };
 
-const updateOrderStatus = async (userId, orderId, newStatus, userRole = 'CUSTOMER') => {
+const updateOrderStatus = async (
+  userId,
+  orderId,
+  newStatus,
+  userRole = 'CUSTOMER'
+) => {
   return await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
@@ -227,19 +285,32 @@ const updateOrderStatus = async (userId, orderId, newStatus, userRole = 'CUSTOME
     });
 
     if (!order) {
-      throw new AppError('Order not found', { code: 'ORDER_NOT_FOUND', statusCode: 404 });
+      throw new AppError('Order not found', {
+        code: 'ORDER_NOT_FOUND',
+        statusCode: 404
+      });
     }
 
     if (order.userId !== userId && userRole !== 'ADMIN') {
-      throw new AppError('Order not found', { code: 'ORDER_NOT_FOUND', statusCode: 404 });
+      throw new AppError('Order not found', {
+        code: 'ORDER_NOT_FOUND',
+        statusCode: 404
+      });
     }
 
     validateTransition(order.status, newStatus);
 
-    if (['PROCESSING', 'READY_TO_SHIP', 'SHIPPED', 'DELIVERED'].includes(newStatus)) {
-      const isCod = order.payments?.some(p => p.method === 'COD');
+    if (
+      ['PROCESSING', 'READY_TO_SHIP', 'SHIPPED', 'DELIVERED'].includes(
+        newStatus
+      )
+    ) {
+      const isCod = order.payments?.some((p) => p.method === 'COD');
       if (order.paymentStatus !== 'PAID' && !isCod) {
-        throw new AppError('Cannot process unpaid order unless COD', { code: 'PAYMENT_REQUIRED', statusCode: 400 });
+        throw new AppError('Cannot process unpaid order unless COD', {
+          code: 'PAYMENT_REQUIRED',
+          statusCode: 400
+        });
       }
     }
 

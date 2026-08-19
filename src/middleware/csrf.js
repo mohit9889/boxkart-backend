@@ -34,10 +34,12 @@ const csrfProtection = (req, res, next) => {
   const headerToken = req.headers['x-csrf-token'];
 
   if (!cookieToken || !headerToken || cookieToken !== headerToken) {
-    return next(new AppError('Invalid or missing CSRF token', {
-      code: 'FORBIDDEN',
-      statusCode: 403
-    }));
+    return next(
+      new AppError('Invalid or missing CSRF token', {
+        code: 'FORBIDDEN',
+        statusCode: 403
+      })
+    );
   }
 
   next();
