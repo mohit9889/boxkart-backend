@@ -288,6 +288,31 @@ const updateRfqStatus = async (id, status) => {
   });
 };
 
+/* ── Quotes ── */
+
+const getQuotes = async (page = 1, limit = 20) => {
+  const skip = (page - 1) * limit;
+  const [quotes, total] = await Promise.all([
+    prisma.quote.findMany({
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        rfq: {
+          include: {
+            user: { select: { id: true, email: true, firstName: true, lastName: true } }
+          }
+        }
+      }
+    }),
+    prisma.quote.count()
+  ]);
+  return {
+    quotes,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+  };
+};
+
 module.exports = {
   createCategory,
   updateCategory,
@@ -303,5 +328,6 @@ module.exports = {
   getOrders,
   updateOrderStatus,
   getRfqs,
-  updateRfqStatus
+  updateRfqStatus,
+  getQuotes
 };

@@ -31,6 +31,9 @@ router.patch('/orders/:id/status', adminController.updateOrderStatus);
 router.get('/rfqs', adminController.getRfqs);
 router.patch('/rfqs/:id/status', adminController.updateRfqStatus);
 
+// Quotes
+router.get('/quotes', adminController.getQuotes);
+
 // Guest Inquiries (from the custom packaging form)
 router.get('/guest-inquiries', adminController.getGuestInquiries);
 router.get('/guest-inquiries/:id', adminController.getGuestInquiry);

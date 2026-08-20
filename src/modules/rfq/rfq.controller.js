@@ -210,6 +210,18 @@ module.exports = {
   acceptQuote,
   cancelRfq,
 
+  getUserQuotes: async (req, res, next) => {
+    try {
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 20;
+      const quotes = await rfqService.getUserQuotes(req.user.id, page, limit);
+
+      res.status(200).json({ success: true, ...quotes });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   getRfqQuotes: async (req, res, next) => {
     try {
       const { id } = req.params;

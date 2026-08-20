@@ -190,6 +190,21 @@ const updateRfqStatus = async (req, res, next) => {
   }
 };
 
+/* ── Quotes ── */
+
+const getQuotes = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const result = await adminService.getQuotes(page, limit);
+    res
+      .status(200)
+      .json({ success: true, data: result.quotes, meta: result.pagination });
+  } catch (error) {
+    next(error);
+  }
+};
+
 /* ── Guest Inquiries ── */
 
 const getGuestInquiries = async (req, res, next) => {
@@ -246,6 +261,7 @@ module.exports = {
   updateOrderStatus,
   getRfqs,
   updateRfqStatus,
+  getQuotes,
   getGuestInquiries,
   getGuestInquiry,
   updateGuestInquiryStatus

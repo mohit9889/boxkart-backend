@@ -502,6 +502,36 @@ module.exports = {
   acceptQuote,
   cancelRfq,
 
+  getUserQuotes: async (userId, page = 1, limit = 20) => {
+    const skip = (page - 1) * limit;
+    const [quotes, total] = await Promise.all([
+      prisma.quote.findMany({
+        where: {
+          rfq: {
+            userId
+          }
+        },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          rfq: true
+        }
+      }),
+      prisma.quote.count({
+        where: {
+          rfq: {
+            userId
+          }
+        }
+      })
+    ]);
+    return {
+      quotes,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    };
+  },
+
   getRfqQuotes: async (rfqId, userId, userRole = 'CUSTOMER') => {
     // Verify user owns the RFQ or is admin
     const rfq = await prisma.rFQ.findUnique({
